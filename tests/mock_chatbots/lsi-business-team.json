@@ -1,0 +1,23 @@
+{
+  "id": "lsi-business-team",
+  "name": "LSI사업팀",
+  "description": "LSI사업팀 전용 챗봘",
+  "level": 0,
+  "role": "agent",
+  "parent_id": null,
+  "sub_chatbots": [
+    {"id": "pddi-total", "level": 1}
+  ],
+  "retrieval": {
+    "db_ids": ["lsi-members"]
+  },
+  "llm": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.7
+  },
+  "policy": {
+    "delegation_threshold": 70,
+    "multi_sub_execution": false,
+    "keywords": ["LSI", "사업팀", "PDDI", "개발팀"]
+  }
+}

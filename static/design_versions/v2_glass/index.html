@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi Custom Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --surface: #f7f9fb;
+      --surface-container-low: #f2f4f6;
+      --surface-container-lowest: #ffffff;
+      --surface-bright: #f7f9fb;
+      --primary: #003476;
+      --primary-container: #124a9b;
+      --on-primary: #ffffff;
+      --on-surface: #191c1e;
+      --on-surface-variant: #5e6164;
+      --tertiary: #46009e;
+      --tertiary-container: #620ad3;
+      --outline-variant: rgba(195, 198, 213, 0.15);
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #e8f0f8 0%, #f7f9fb 100%);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      color: var(--on-surface);
+    }
+
+    /* Glassmorphism Header */
+    header {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--outline-variant);
+      color: var(--on-surface);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    header h1 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    #chatbot-selector {
+      margin-left: auto;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 9999px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: var(--surface-container-low);
+      color: var(--on-surface);
+      font-family: 'Inter', sans-serif;
+      appearance: none;
+      padding-right: 40px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23191c1e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+
+    #chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 75%;
+      padding: 16px 20px;
+      border-radius: 20px;
+      line-height: 1.7;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      font-family: 'Inter', sans-serif;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message.user {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+      color: var(--on-primary);
+      align-self: flex-end;
+      border-bottom-right-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 52, 118, 0.2);
+    }
+    
+    .message.assistant {
+      background: var(--surface-container-lowest);
+      color: var(--on-surface);
+      align-self: flex-start;
+      border-bottom-left-radius: 6px;
+      box-shadow: 0 2px 8px rgba(25, 28, 30, 0.06);
+    }
+    
+    .message.system-msg {
+      background: rgba(254, 243, 199, 0.8);
+      color: #92400e;
+      align-self: center;
+      font-size: 0.82rem;
+      border-radius: 12px;
+      padding: 8px 16px;
+      backdrop-filter: blur(8px);
+    }
+
+    .message.assistant table {
+      border-collapse: collapse;
+      margin: 12px 0;
+      width: 100%;
+      font-size: 0.9rem;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .message.assistant th,
+    .message.assistant td {
+      padding: 12px 16px;
+      text-align: left;
+      border: none;
+    }
+    
+    .message.assistant th {
+      background: var(--surface-container-low);
+      font-weight: 600;
+      color: var(--on-surface);
+    }
+    
+    .message.assistant tr:nth-child(even) {
+      background: var(--surface-container-low);
+    }
+    
+    .message.assistant tr:hover {
+      background: rgba(0, 52, 118, 0.04);
+    }
+
+    /* Glass Input Area */
+    #input-area {
+      padding: 16px 24px;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--outline-variant);
+      display: flex;
+      gap: 12px;
+    }
+    
+    #user-input {
+      flex: 1;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 9999px;
+      font-size: 0.95rem;
+      outline: none;
+      resize: none;
+      height: 52px;
+      overflow: hidden;
+      background: var(--surface-container-lowest);
+      color: var(--on-surface);
+      font-family: 'Inter', sans-serif;
+      box-shadow: inset 0 2px 4px rgba(25, 28, 30, 0.04);
+    }
+    
+    #user-input:focus {
+      box-shadow: inset 0 2px 4px rgba(25, 28, 30, 0.04), 0 0 0 2px var(--primary-container);
+    }
+    
+    #send-btn {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+      color: var(--on-primary);
+      border: none;
+      border-radius: 9999px;
+      padding: 14px 28px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    #send-btn:disabled {
+      background: linear-gradient(135deg, #a0b4d6 0%, #8a9cc4 100%);
+      cursor: not-allowed;
+    }
+    
+    #send-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 52, 118, 0.3);
+    }
+
+    #session-info {
+      font-size: 0.75rem;
+      color: var(--on-surface-variant);
+      padding: 8px 24px;
+      background: rgba(247, 249, 251, 0.8);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--outline-variant);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .typing-indicator {
+      color: var(--on-surface-variant);
+      font-style: italic;
+    }
+    
+    /* AI Badge */
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: linear-gradient(135deg, var(--tertiary) 0%, var(--tertiary-container) 100%);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Multi Custom Agent</h1>
+  <select id="chatbot-selector"></select>
+</header>
+
+<div id="chat-container"></div>
+
+<div id="session-info">세션: 없음 | 챗봇: 선택 안 됨</div>
+
+<div id="input-area">
+  <textarea id="user-input" placeholder="메시지를 입력하세요..." rows="1"></textarea>
+  <button id="send-btn">전송</button>
+</div>
+
+<script>
+  const BASE = window.location.origin;
+  let sessionId = null;
+  let selectedChatbotId = null;
+
+  const chatContainer = document.getElementById('chat-container');
+  const userInput     = document.getElementById('user-input');
+  const sendBtn       = document.getElementById('send-btn');
+  const selector      = document.getElementById('chatbot-selector');
+  const sessionInfo   = document.getElementById('session-info');
+
+  async function loadChatbots() {
+    try {
+      const res = await fetch(`${BASE}/api/chatbots`);
+      const bots = await res.json();
+      selector.innerHTML = '<option value="">챗봇 선택...</option>';
+      bots.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        const typeLabel = b.sub_chatbots?.length > 0 ? 'Parent' : (b.parent_id ? 'Child' : 'Standalone');
+        opt.textContent = `${b.name} (${typeLabel})`;
+        selector.appendChild(opt);
+      });
+    } catch(e) {
+      addSystemMsg('챗봇 목록을 불러오지 못했습니다.');
+    }
+  }
+
+  selector.addEventListener('change', () => {
+    selectedChatbotId = selector.value || null;
+    sessionId = null;
+    chatContainer.innerHTML = '';
+    updateSessionInfo();
+    if (selectedChatbotId) {
+      addSystemMsg(`챗봇 "${selector.options[selector.selectedIndex].text}" 선택됨`);
+    }
+  });
+
+  function parseMarkdownTable(text) {
+    const tableRegex = /\|([^\n]+)\|/;
+    if (!tableRegex.test(text)) return text;
+    const lines = text.split('\n');
+    let result = [];
+    let inTable = false;
+    let tableHtml = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('|') && line.endsWith('|')) {
+        if (!inTable) {
+          inTable = true;
+          tableHtml = ['<table>'];
+        }
+        const cells = line.split('|').filter(c => c.trim() !== '');
+        if (cells.every(c => /^[-\s]+$/.test(c.trim()))) continue;
+        if (tableHtml.length === 1) {
+          tableHtml.push('<thead><tr>');
+          cells.forEach(cell => tableHtml.push(`<th>${cell.trim()}</th>`));
+          tableHtml.push('</tr></thead><tbody>');
+        } else {
+          tableHtml.push('<tr>');
+          cells.forEach(cell => tableHtml.push(`<td>${cell.trim()}</td>`));
+          tableHtml.push('</tr>');
+        }
+      } else {
+        if (inTable) {
+          tableHtml.push('</tbody></table>');
+          result.push(tableHtml.join(''));
+          inTable = false;
+          tableHtml = [];
+        }
+        if (line) result.push(line);
+      }
+    }
+    if (inTable) {
+      tableHtml.push('</tbody></table>');
+      result.push(tableHtml.join(''));
+    }
+    return result.join('\n');
+  }
+
+  function addMessage(role, content) {
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+    if (role === 'assistant') {
+      div.innerHTML = parseMarkdownTable(content);
+    } else {
+      div.textContent = content;
+    }
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return div;
+  }
+
+  function addSystemMsg(text) {
+    const div = document.createElement('div');
+    div.className = 'message system-msg';
+    div.textContent = text;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function updateSessionInfo() {
+    const botName = selectedChatbotId
+      ? selector.options[selector.selectedIndex]?.text || selectedChatbotId
+      : '선택 안 됨';
+    sessionInfo.textContent = `세션: ${sessionId || '없음'} | 챗봇: ${botName}`;
+  }
+
+  async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text || !selectedChatbotId) {
+      if (!selectedChatbotId) addSystemMsg('챗봇을 먼저 선택해 주세요.');
+      return;
+    }
+    userInput.value = '';
+    sendBtn.disabled = true;
+    addMessage('user', text);
+    const assistantDiv = addMessage('assistant', '');
+    assistantDiv.classList.add('typing-indicator');
+    assistantDiv.textContent = '답변 생성 중...';
+
+    try {
+      const res = await fetch(`${BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatbot_id: selectedChatbotId,
+          message: text,
+          session_id: sessionId,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        assistantDiv.textContent = `오류: ${err.detail || res.statusText}`;
+        assistantDiv.classList.remove('typing-indicator');
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let fullText = '';
+      assistantDiv.classList.remove('typing-indicator');
+      assistantDiv.textContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          if (buffer) {
+            const lines = buffer.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const raw = line.slice(6).trim();
+                  if (!raw || raw === '{}') continue;
+                  const chunk = JSON.parse(raw);
+                  if (typeof chunk === 'string') {
+                    fullText += chunk;
+                    assistantDiv.innerHTML = parseMarkdownTable(fullText);
+                  }
+                } catch {}
+              }
+            }
+          }
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('event: done')) {
+            sendBtn.disabled = false;
+            continue;
+          }
+          if (line.startsWith('event: error')) continue;
+          if (line.startsWith('event: session_id')) continue;
+          if (line.startsWith('data: ')) {
+            try {
+              const raw = line.slice(6).trim();
+              if (!raw || raw === '{}') continue;
+              const chunk = JSON.parse(raw);
+              if (typeof chunk === 'string') {
+                fullText += chunk;
+                assistantDiv.innerHTML = parseMarkdownTable(fullText);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+              }
+            } catch {}
+          }
+        }
+      }
+      const sessionMatch = (buffer + '').match(/event: session_id\ndata: "([^"]+)"/);
+      if (sessionMatch) {
+        sessionId = sessionMatch[1];
+        updateSessionInfo();
+      }
+    } catch (e) {
+      assistantDiv.textContent = `네트워크 오류: ${e.message}`;
+    } finally {
+      sendBtn.disabled = false;
+      userInput.focus();
+    }
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  userInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  loadChatbots().then(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const chatbotId = urlParams.get('chatbot');
+    if (chatbotId) {
+      const option = Array.from(selector.options).find(opt => opt.value === chatbotId);
+      if (option) {
+        selector.value = chatbotId;
+        selector.dispatchEvent(new Event('change'));
+      } else {
+        addSystemMsg(`챗봇 "${chatbotId}"를 찾을 수 없습니다.`);
+      }
+    }
+  });
+</script>
+</body>
+</html>

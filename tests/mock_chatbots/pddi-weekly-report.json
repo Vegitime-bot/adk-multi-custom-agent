@@ -1,0 +1,31 @@
+{
+  "id": "pddi-weekly-report",
+  "name": "PDDI개발팀주간보고",
+  "description": "PDDI 개발팀 주간보고 관리",
+  "system_prompt": "당신은 PDDI개발팀의 주간보고를 관리하는 AI 어시스턴트입니다. 주간보고 작성, 조회, 요약 등을 지원합니다.",
+  "level": 2,
+  "parent_id": "pddi-dev-team",
+  "sub_chatbots": [],
+  "retrieval": {
+    "db_ids": ["pddi-weekly-reports"],
+    "k": 5,
+    "filter_metadata": null
+  },
+  "llm": {
+    "model": "gpt-4",
+    "temperature": 0.7,
+    "max_tokens": 2048
+  },
+  "memory": {
+    "max_messages": 20
+  },
+  "policy": {
+    "delegation_threshold": 70,
+    "multi_sub_execution": false,
+    "max_parallel_subs": 3,
+    "synthesis_mode": "parallel",
+    "hybrid_score_threshold": 0.15,
+    "enable_parent_delegation": true,
+    "keywords": ["주간보고", "주간", "보고", "weekly", "report", "52주차", "주차", "요약", "summary"]
+  }
+}

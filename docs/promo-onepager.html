@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>스마트 챗봇 연결 서비스</title>
+  <style>
+    :root{--bg:#f8fafc;--card:#fff;--ink:#0f172a;--sub:#475569;--line:#e2e8f0;--blue:#2563eb;--blue2:#1d4ed8;--mint:#10b981;--green:#059669}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,Arial,"Noto Sans KR",sans-serif;background:var(--bg);color:var(--ink);line-height:1.7}
+    .wrap{max-width:1200px;margin:0 auto;padding:28px}
+    .hero{background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;border-radius:24px;padding:44px;box-shadow:0 16px 40px rgba(15,23,42,.18)}
+    .badge{display:inline-block;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.14);font-size:13px;margin-bottom:14px}
+    h1{margin:0 0 12px;font-size:42px;line-height:1.1} .lead{font-size:21px;color:#dbeafe;max-width:860px;line-height:1.6}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:28px}.stat{background:rgba(255,255,255,.09);padding:18px;border-radius:16px}.stat b{display:block;font-size:26px;color:#93c5fd;margin-bottom:6px}.stat span{font-size:14px;color:#e2e8f0;line-height:1.5}
+    .section{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
+    .section h2{margin:0 0 14px;font-size:26px;color:var(--blue2)}.section p{color:var(--sub);font-size:16px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .card{border:1px solid var(--line);border-radius:16px;padding:20px;background:#fff}.card h3{margin:0 0 10px;font-size:19px;color:var(--ink)}.card p{font-size:15px;line-height:1.7}.icon{width:46px;height:46px;border-radius:12px;background:#dbeafe;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:22px}
+    .highlight-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;padding:20px;margin:16px 0}
+    .highlight-box h4{margin:0 0 10px;color:var(--green);font-size:17px}
+    .highlight-box p{margin:0;color:#166534;font-size:15px;line-height:1.7}
+    .example{background:#fefce8;border:1px solid #fde047;border-radius:16px;padding:20px;margin:16px 0}
+    .example h4{margin:0 0 10px;color:#a16207;font-size:17px}
+    .example p{margin:0;color:#713f12;font-size:15px;line-height:1.7}
+    .step-list{margin:0;padding:0;list-style:none}
+    .step-list li{position:relative;padding-left:36px;margin-bottom:16px;font-size:15px;line-height:1.7}
+    .step-list li::before{content:attr(data-step);position:absolute;left:0;top:0;width:26px;height:26px;background:var(--blue);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:15px} th,td{border:1px solid var(--line);padding:12px 14px;text-align:left;vertical-align:top} th{background:#f8fafc;font-weight:600}
+    .flow{background:#f8fafc;border:1px solid var(--line);border-radius:16px;padding:22px;font-size:15px;line-height:2}
+    .shots{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.shot{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff}.shot img{width:100%;display:block}.shot .cap{padding:14px;font-size:14px;color:var(--sub)}
+    .kpi{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.kpi .item{border-radius:16px;padding:20px;background:linear-gradient(180deg,#eff6ff,#fff);border:1px solid #bfdbfe}.kpi b{display:block;font-size:18px;color:var(--blue2);margin-bottom:8px}
+    .kpi span{color:var(--sub);font-size:14px;line-height:1.6}
+    .footer{margin:22px 0 8px;color:#64748b;font-size:13px}
+    .tag{display:inline-block;padding:4px 10px;border-radius:20px;background:#e0e7ff;color:#4338ca;font-size:12px;margin-right:6px}
+    @media (max-width: 960px){.cards,.shots,.kpi,.stats,.grid{grid-template-columns:1fr}.hero{padding:28px}h1{font-size:30px}.lead{font-size:18px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="badge">기업용 AI 서비스</div>
+      <h1>스마트 챗봇 연결 서비스</h1>
+      <div class="lead">기술 문제와 IT 요청을 신속하게 해결하는 똑똑한 AI 지원 시스템입니다. 어떤 문제든 알맞은 전문가 챗봇을 찾아 정확한 답변을 드립니다.</div>
+      <div class="stats">
+        <div class="stat"><b>똑똑한 연결</b><span>문제 내용을 이해해서 가장 잘 아는 기술 챗봇을 자동으로 연결</span></div>
+        <div class="stat"><b>안전한 접근</b><span>접근 권한이 있는 정보만 확인할 수 있도록 관리</span></div>
+        <div class="stat"><b>빠른 확장</b><span>새로운 기술 영역이 생겨도 챗봇을 간단히 추가하고 바로 운영</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>왜 필요한가요?</h2>
+      <p style="font-size:17px;margin-bottom:20px">개발자와 직원들이 매일 겪는 <b>반복적인 기술 문제</b>가 있습니다. 비슷한 질문이 계속 들어오고, 담당자는 같은 답변을 반복하느라 시간을 낭비합니다.</p>
+      
+      <div class="example">
+        <h4>🤔 이런 경험, 있지 않으신가요?</h4>
+        <p>"VPN 연결이 안 돼요" → "IT지원팀에 문의하세요"<br>
+        "이 오류 코드 어떻게 해결하나요?" → "개발팀 Wiki를 찾아보세요"<br>
+        "서버 배포 권한 어디서 요청하나요?" → "DevOps팀에 슬랙으로 물어보세요"</p>
+      </div>
+
+      <div class="highlight-box">
+        <h4>💡 우리의 해결 방법</h4>
+        <p>각 기술 분야의 전문가 챗봇을 만들고, <b>중앙 지원 챗봇</b>이 문제를 이해해서 적절한 전문 챗봇으로 연결해줍니다. 개발자와 직원들은 어디에 문의해야 할지 몰라도 괜찮습니다.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>어떻게 도움이 되나요?</h2>
+      <div class="cards">
+        <div class="card"><div class="icon">🎯</div><h3>문제를 알아서 연결</h3><p>오류 메시지나 요청 내용을 이해해서 해당 기술 영역의 챗봇을 자동으로 연결합니다. 사용자가 어느 팀에 문의해야 할지 몰라도 됩니다.</p></div>
+        <div class="card"><div class="icon">⚡</div><h3>24시간 즉시 답변</h3><p>늦은 밤이나 주말에도 챗봇이 즉시 응답합니다. 담당자가 부재중일 때도 기본적인 문제 해결과 가이드를 제공합니다.</p></div>
+        <div class="card"><div class="icon">📚</div><h3>문서에서 바로 답변</h3><p>회사의 기술 문서, Runbook, FAQ를 학습해서 정확한 답변을 찾아줍니다. 방대한 위키를 일일이 뒤질 필요가 없습니다.</p></div>
+        <div class="card"><div class="icon">📊</div><h3>자주 묻는 문제 파악</h3><p>어떤 문제가 많이 발생하는지, 어떤 가이드가 부족한지 확인합니다. 선제적으로 문서를 보완하고 교육을 진행할 수 있습니다.</p></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>실제로 어떻게 작동하나요?</h2>
+      <p style="margin-bottom:18px">쉽게 설명하면 <b>"IT 지원 데스크의 똑똑한 비서"</b>와 같습니다.</p>
+      
+      <div class="flow">
+        <b>1. 개발자가 문제를 입력합니다</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;예: "배포 후 502 에러가 떠요"
+        <br><br>
+        <b>2. 중앙 챗봇이 문제를 이해합니다</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;"아, 이건 서버 배포/DevOps 관련 문제구나"
+        <br><br>
+        <b>3. 적절한 전문 챗봇을 연결합니다</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;DevOps 챗봇 → 과거 유사 사례 문서 검색 → 해결 방법 안내
+        <br><br>
+        <b>4. 답변을 받아 사용자에게 전달합니다</b><br>
+        &nbsp;&nbsp;&nbsp;&nbsp;"502 에러는 보통 설정 파일 누락 때문입니다. /docs/deploy-checklist를 확인해보세요. (출처: DevOps Runbook)"
+      </div>
+
+      <div class="highlight-box" style="margin-top:20px">
+        <h4>✨ 중요한 점</h4>
+        <p>여러 기술 영역이 얽힌 문제라면, 관련된 모든 챗봇이 협력해서 종합적인 해결책을 제공합니다. 사용자는 여러 팀에 따로 문의할 필요가 없습니다.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>화면 미리보기</h2>
+      <div class="shots">
+        <div class="shot"><img src="assets/01-chat-ui.png" alt="chat ui"><div class="cap"><b>직원용 채팅 화면</b><br>자연스러운 대화로 질문하고, 필요한 챗봇이 자동으로 연결되어 답변합니다</div></div>
+        <div class="shot"><img src="assets/02-admin-ui.png" alt="admin ui"><div class="cap"><b>관리자 설정 화면</b><br>각 팀 챗봇의 역할과 사용 권한을 쉽게 설정할 수 있습니다</div></div>
+        <div class="shot"><img src="assets/03-admin-hierarchy.png" alt="hierarchy ui"><div class="cap"><b>팀 연결 구조 관리</b><br>어떤 챗봇이 어떤 업무를 담당하는지 구조를 한눈에 볼 수 있습니다</div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>어떻게 활용할 수 있나요?</h2>
+      <table>
+        <tr><th style="width:25%">활용 사례</th><th>설명</th></tr>
+        <tr><td><span class="tag">개발 환경 지원</span></td><td>VPN, 계정 생성, IDE 설치 등 개발자들이 자주 묻는 환경 문제를 한 곳에서 처리. IT지원 챗봇이 바로 해결책을 제공합니다.</td></tr>
+        <tr><td><span class="tag">기술 전문 상담</span></td><td>인프라, 보안, 백엔드, 프론트엔드 등 분야별 전문 챗봇으로 기술 문제 해결을 자동화합니다.</td></tr>
+        <tr><td><span class="tag">운영 장애 대응</span></td><td>오류 코드, 알림 메시지, 장애 상황별 대응 방법을 즉시 안내. 심각한 문제는 적절한 담당자에게 자동으로 연결합니다.</td></tr>
+        <tr><td><span class="tag">보안 관리</span></td><td>서버 접근 권한, 민감한 설정 정보 등은 권한이 있는 사용자만 확인할 수 있도록 안전하게 관리합니다.</td></tr>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>성과는 어떻게 측정하나요?</h2>
+      <div class="kpi">
+        <div class="item"><b>📉 반복 지원 요청 감소</b><span>"VPN 연결 방법", "계정 생성 요청" 같은 자주 묻는 질문이 챗봇으로 해결되는 비율</span></div>
+        <div class="item"><b>⚡ 문제 해결 시간 단축</b><span>문제 발생 → 해결책 확인까지 걸리는 시간이 단축되는 정도</span></div>
+        <div class="item"><b>😊 개발자 만족도</b><span>"도움이 되었어요" 평가 비율과 다시 사용하려는 의향</span></div>
+        <div class="item"><b>🔧 운영 안정성</b><span>잘못된 연결, 오류 발생, 권한 문제 등이 줄어드는 정도</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>도입은 어떻게 하나요?</h2>
+      <p style="margin-bottom:18px">큰 변화 없이 단계적으로 시작할 수 있습니다.</p>
+      <ul class="step-list">
+        <li data-step="1"><b>시범 팀 선정</b><br>자주 묻는 질문이 많고 문서가 정리된 팀을 먼저 시작합니다 (예: 인사팀, IT지원팀)</li>
+        <li data-step="2"><b>구조 설계</b><br>중앙 챗봇과 각 팀 챗봇의 역할, 접근 권한 정책을 정합니다</li>
+        <li data-step="3"><b>시범 운영</b><br>한 달 정도 테스트하며 연결 품질과 실제 업무 개선 효과를 확인합니다</li>
+        <li data-step="4"><b>점진적 확대</b><br>성과가 확인되면 다른 팀으로 순차적으로 확대합니다</li>
+      </ul>
+      <div class="footer">참고: 각 조직의 실제 환경에 따라 성과 수치는 다를 수 있습니다. 파일럿 결과를 기준으로 현실적인 목표를 설정하는 것이 좋습니다.</div>
+    </section>
+  </div>
+</body>
+</html>

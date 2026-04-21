@@ -1,0 +1,23 @@
+{
+  "id": "test-chatbot-544788e9",
+  "name": "Test Chatbot 544788e9",
+  "description": "This is an automated test chatbot created by E2E tests",
+  "active": true,
+  "capabilities": {
+    "db_ids": [],
+    "model": "kimi-k2.5:cloud",
+    "system_prompt": "You are a helpful test assistant. Keep responses brief."
+  },
+  "policy": {
+    "temperature": 0.3,
+    "max_tokens": 1024,
+    "stream": true,
+    "supported_modes": [
+      "tool",
+      "agent"
+    ],
+    "default_mode": "agent",
+    "max_messages": 20
+  },
+  "sub_chatbots": []
+}

@@ -1,0 +1,21 @@
+{
+  "id": "rp-pddi-minutes",
+  "name": "PDDI개발팀주간보고모음",
+  "description": "PDDI개발팀 주간보고 전용 챗봘",
+  "level": 2,
+  "role": "agent",
+  "parent_id": "pddi-total",
+  "sub_chatbots": [],
+  "retrieval": {
+    "db_ids": ["pddi-weekly-reports"]
+  },
+  "llm": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.7
+  },
+  "policy": {
+    "delegation_threshold": 60,
+    "multi_sub_execution": false,
+    "keywords": ["주간보고", "주간", "보고", "weekly", "52주차", "주차"]
+  }
+}

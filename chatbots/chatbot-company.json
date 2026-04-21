@@ -1,0 +1,38 @@
+{
+  "id": "chatbot-company",
+  "name": "회사 전체 지원 챗봇",
+  "description": "회사 전체 업무 지원 Root 챗봇. 인사, 기술 등 모든 문의를 처리하고 전문 부서로 연결",
+  "active": true,
+  "capabilities": {
+    "db_ids": ["db_company_overview", "db_policies_general"],
+    "model": "kimi-k2.5:cloud",
+    "system_prompt": "당신은 회사 전체 업무 지원의 Root 어시스턴트입니다.\n모든 사내 문의를 받아 처리하며, 필요시 각 부서 전문가에게 연결합니다.\n\n답변 시 다음을 반드시 준수하세요:\n1. 먼저 질문에 대한 초기 답변을 생성하세요\n2. 답변 끝에 'CONFIDENCE: XX' 형식으로 신뢰도를 표시하세요 (0-100)\n3. 신뢰도가 70% 미만이거나, 특정 부서의 전문 상담이 필요한 경우 하위 전문가에게 위임하세요\n\n하위 전문가 목록:\n- chatbot-hr: 인사지원 상위 챗봇 (인사정책, 복리후생)\n- chatbot-tech: 기술지원 상위 챗봇 (개발, 인프라, RTL 등)\n\n모르는 내용은 모른다고 솔직하게 답변하세요.\n답변은 한국어로 작성하세요."
+  },
+  "policy": {
+    "temperature": 0.3,
+    "max_tokens": 1024,
+    "stream": true,
+    "supported_modes": ["tool", "agent"],
+    "default_mode": "agent",
+    "max_messages": 20,
+    "delegation_threshold": 70,
+    "enable_parent_delegation": true,
+    "multi_sub_execution": true,
+    "max_parallel_subs": 2,
+    "synthesis_mode": "parallel"
+  },
+  "sub_chatbots": [
+    {
+      "id": "chatbot-hr",
+      "level": 1,
+      "default_role": "agent"
+    },
+    {
+      "id": "chatbot-tech",
+      "level": 1,
+      "default_role": "agent"
+    }
+  ],
+  "parent_id": null,
+  "level": 0
+}

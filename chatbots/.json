@@ -1,0 +1,23 @@
+{
+  "id": "",
+  "name": "테스트",
+  "description": "",
+  "active": true,
+  "capabilities": {
+    "db_ids": [],
+    "model": "kimi-k2.5:cloud",
+    "system_prompt": ""
+  },
+  "policy": {
+    "temperature": 0.3,
+    "max_tokens": 1024,
+    "stream": true,
+    "supported_modes": [
+      "tool",
+      "agent"
+    ],
+    "default_mode": "agent",
+    "max_messages": 20
+  },
+  "sub_chatbots": []
+}

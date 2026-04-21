@@ -1,0 +1,19 @@
+{
+  "id": "chatbot-b",
+  "name": "HR 정책 챗봇",
+  "description": "인사 규정 및 복리후생 안내 챗봇 (Tool 모드)",
+  "active": true,
+  "capabilities": {
+    "db_ids": ["db_003"],
+    "model": "kimi-k2.5:cloud",
+    "system_prompt": "당신은 사내 HR 정책 안내 전문 어시스턴트입니다.\n검색된 인사 규정 문서를 기반으로 정확하게 안내해 주세요.\n개인 의견은 배제하고 규정 내용만 안내하세요.\n답변은 한국어로 작성하세요."
+  },
+  "policy": {
+    "temperature": 0.2,
+    "max_tokens": 512,
+    "stream": true,
+    "supported_modes": ["tool", "agent"],
+    "default_mode": "tool",
+    "max_messages": 10
+  }
+}

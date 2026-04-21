@@ -1,0 +1,37 @@
+{
+  "id": "pddi-dev-team",
+  "name": "PDDI개발팀",
+  "description": "PDDI 개발팀의 기술 및 개발 업무 지원",
+  "system_prompt": "당신은 PDDI개발팀의 AI 어시스턴트입니다. PDDI 개발 관련 질문에 답변합니다. 주간보고 관련 질문은 주간보고 챗봇에게 위임합니다.",
+  "level": 1,
+  "parent_id": "lsi-business-team",
+  "sub_chatbots": [
+    {
+      "id": "pddi-weekly-report",
+      "level": 2,
+      "default_role": "agent"
+    }
+  ],
+  "retrieval": {
+    "db_ids": ["pddi-dev-docs"],
+    "k": 5,
+    "filter_metadata": null
+  },
+  "llm": {
+    "model": "gpt-4",
+    "temperature": 0.7,
+    "max_tokens": 2048
+  },
+  "memory": {
+    "max_messages": 20
+  },
+  "policy": {
+    "delegation_threshold": 70,
+    "multi_sub_execution": false,
+    "max_parallel_subs": 3,
+    "synthesis_mode": "parallel",
+    "hybrid_score_threshold": 0.15,
+    "enable_parent_delegation": true,
+    "keywords": ["PDDI개발팀", "PDDI", "개발팀", "개발", "PDDI개발", "기술", "엔지니어링"]
+  }
+}

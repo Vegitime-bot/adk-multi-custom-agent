@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi Custom Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
+
+    header {
+      background: #1a73e8; color: #fff; padding: 12px 20px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+
+    #chatbot-selector {
+      margin-left: auto; padding: 6px 12px;
+      border: none; border-radius: 6px; font-size: 0.9rem; cursor: pointer;
+    }
+
+    #chat-container {
+      flex: 1; overflow-y: auto; padding: 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
+    .message {
+      max-width: 70%; padding: 10px 14px; border-radius: 12px;
+      line-height: 1.6; font-size: 0.92rem; white-space: pre-wrap;
+    }
+    .message.user {
+      background: #1a73e8; color: #fff;
+      align-self: flex-end; border-bottom-right-radius: 4px;
+    }
+    .message.assistant {
+      background: #fff; color: #333;
+      align-self: flex-start; border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    }
+    .message.system-msg {
+      background: #fef3c7; color: #92400e;
+      align-self: center; font-size: 0.82rem; border-radius: 8px; padding: 6px 12px;
+    }
+
+    /* Markdown table styles */
+    .message.assistant table {
+      border-collapse: collapse;
+      margin: 8px 0;
+      width: 100%;
+      font-size: 0.9rem;
+    }
+    .message.assistant th,
+    .message.assistant td {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    .message.assistant th {
+      background: #f5f5f5;
+      font-weight: 600;
+    }
+    .message.assistant tr:nth-child(even) {
+      background: #fafafa;
+    }
+    .message.assistant tr:hover {
+      background: #f0f0f0;
+    }
+
+    #input-area {
+      padding: 12px 20px; background: #fff;
+      border-top: 1px solid #e0e0e0;
+      display: flex; gap: 10px;
+    }
+    #user-input {
+      flex: 1; padding: 10px 14px; border: 1px solid #ddd;
+      border-radius: 24px; font-size: 0.95rem; outline: none;
+      resize: none; height: 44px; overflow: hidden;
+    }
+    #user-input:focus { border-color: #1a73e8; }
+    #send-btn {
+      background: #1a73e8; color: #fff; border: none;
+      border-radius: 24px; padding: 10px 20px;
+      font-size: 0.95rem; cursor: pointer; white-space: nowrap;
+    }
+    #send-btn:disabled { background: #a0b4d6; cursor: not-allowed; }
+    #send-btn:hover:not(:disabled) { background: #1558b0; }
+
+    #session-info {
+      font-size: 0.75rem; color: #888; padding: 4px 20px;
+      background: #f9f9f9; border-top: 1px solid #eee;
+    }
+
+    .typing-indicator { color: #999; font-style: italic; }
+
+    /* 토글 스위치 스타일 - 개선된 버전 */
+    .toggle-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      gap: 12px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: relative;
+      width: 60px;
+      height: 32px;
+      background: #888;
+      border-radius: 32px;
+      transition: 0.3s;
+      flex-shrink: 0;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .toggle-slider:before {
+      content: "OFF";
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      left: 2px;
+      top: 2px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: bold;
+      color: #666;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: #1a73e8;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(28px);
+      content: "ON";
+      color: #1a73e8;
+    }
+    .toggle-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Multi Custom Agent</h1>
+  <select id="chatbot-selector"></select>
+  <div id="multi-sub-toggle" style="margin-left: 12px; display: none; align-items: center;">
+    <label class="toggle-switch">
+      <input type="checkbox" id="multi-sub-checkbox">
+      <span class="toggle-slider"></span>
+      <span class="toggle-label">모든 하위 챗봇에 질문</span>
+    </label>
+  </div>
+</header>
+
+<div id="chat-container"></div>
+
+<div id="session-info">세션: 없음 | 챗봇: 선택 안 됨</div>
+
+<div id="input-area">
+  <textarea id="user-input" placeholder="메시지를 입력하세요..." rows="1"></textarea>
+  <button id="send-btn">전송</button>
+</div>
+
+<script>
+  const BASE = window.location.origin;
+  let sessionId = null;
+  let selectedChatbotId = null;
+  let chatbots = [];  // 챗봇 목록 저장
+
+  const chatContainer = document.getElementById('chat-container');
+  const userInput     = document.getElementById('user-input');
+  const sendBtn       = document.getElementById('send-btn');
+  const selector      = document.getElementById('chatbot-selector');
+  const sessionInfo   = document.getElementById('session-info');
+  const multiSubToggle = document.getElementById('multi-sub-toggle');
+  const multiSubCheckbox = document.getElementById('multi-sub-checkbox');
+
+  // ── URL 파라미터에서 챗봇 ID 가져오기 ───────────────────────────
+  function getUrlParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+  }
+
+  function updateUrlParam(name, value) {
+    const url = new URL(window.location);
+    if (value) {
+      url.searchParams.set(name, value);
+    } else {
+      url.searchParams.delete(name);
+    }
+    window.history.replaceState({}, '', url);
+  }
+
+  // ── 챗봇 목록 로드 ──────────────────────────────────────────────
+  async function loadChatbots() {
+    try {
+      const res = await fetch(`${BASE}/api/chatbots`);
+      chatbots = await res.json();  // 전역 변수에 저장
+      selector.innerHTML = '<option value="">챗봇 선택...</option>';
+      chatbots.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        const typeLabel = b.sub_chatbots?.length > 0 ? 'Parent' : (b.parent_id ? 'Child' : 'Standalone');
+        opt.textContent = `${b.name} (${typeLabel})`;
+        selector.appendChild(opt);
+      });
+      
+      // URL 파라미터에서 챗봇 ID 확인하고 자동 선택
+      const urlChatbotId = getUrlParam('chatbot');
+      if (urlChatbotId && chatbots.find(b => b.id === urlChatbotId)) {
+        selector.value = urlChatbotId;
+        selector.dispatchEvent(new Event('change'));
+      }
+    } catch(e) {
+      addSystemMsg('챗봇 목록을 불러오지 못했습니다.');
+    }
+  }
+
+  selector.addEventListener('change', () => {
+    selectedChatbotId = selector.value || null;
+    sessionId = null;
+    chatContainer.innerHTML = '';
+    updateSessionInfo();
+    
+    // URL 파라미터 업데이트
+    updateUrlParam('chatbot', selectedChatbotId);
+    
+    // 챗봇에 sub_chatbots가 있으면 multi_sub_execution 토글 표시
+    if (selectedChatbotId) {
+      const selectedBot = chatbots.find(b => b.id === selectedChatbotId);
+      if (selectedBot && selectedBot.sub_chatbots && selectedBot.sub_chatbots.length > 0) {
+        multiSubToggle.style.display = 'flex';
+        // 초기값은 챗봇 설정에서 가져오기
+        multiSubCheckbox.checked = selectedBot.policy?.multi_sub_execution || false;
+      } else {
+        multiSubToggle.style.display = 'none';
+        multiSubCheckbox.checked = false;
+      }
+      
+      // keywords 표시
+      let displayText = `챗봇 "${selector.options[selector.selectedIndex].text}" 선택됨`;
+      if (selectedBot && selectedBot.keywords && selectedBot.keywords.length > 0) {
+        displayText += `\n🔍 검색 키워드: ${selectedBot.keywords.join(', ')}`;
+      }
+      addSystemMsg(displayText);
+    } else {
+      multiSubToggle.style.display = 'none';
+    }
+  });
+
+  // ── 메시지 렌더링 ────────────────────────────────────────────────
+  // Markdown table parser
+  function parseMarkdownTable(text) {
+    // Match table pattern: | col1 | col2 |
+    const tableRegex = /\|([^\n]+)\|/;
+    if (!tableRegex.test(text)) return text;
+
+    const lines = text.split('\n');
+    let result = [];
+    let inTable = false;
+    let tableHtml = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      // Check if line is a table row
+      if (line.startsWith('|') && line.endsWith('|')) {
+        if (!inTable) {
+          inTable = true;
+          tableHtml = ['<table>'];
+        }
+
+        const cells = line.split('|').filter(c => c.trim() !== '');
+
+        // Skip separator line (contains only dashes and |)
+        if (cells.every(c => /^[-\s]+$/.test(c.trim()))) {
+          continue;
+        }
+
+        // First row is header
+        if (tableHtml.length === 1) {
+          tableHtml.push('<thead><tr>');
+          cells.forEach(cell => {
+            tableHtml.push(`<th>${cell.trim()}</th>`);
+          });
+          tableHtml.push('</tr></thead><tbody>');
+        } else {
+          tableHtml.push('<tr>');
+          cells.forEach(cell => {
+            tableHtml.push(`<td>${cell.trim()}</td>`);
+          });
+          tableHtml.push('</tr>');
+        }
+      } else {
+        if (inTable) {
+          tableHtml.push('</tbody></table>');
+          result.push(tableHtml.join(''));
+          inTable = false;
+          tableHtml = [];
+        }
+        if (line) result.push(line);
+      }
+    }
+
+    if (inTable) {
+      tableHtml.push('</tbody></table>');
+      result.push(tableHtml.join(''));
+    }
+
+    return result.join('\n');
+  }
+
+  function addMessage(role, content) {
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+
+    // Parse markdown tables for assistant messages
+    if (role === 'assistant') {
+      div.innerHTML = parseMarkdownTable(content);
+    } else {
+      div.textContent = content;
+    }
+
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return div;
+  }
+
+  function addSystemMsg(text) {
+    const div = document.createElement('div');
+    div.className = 'message system-msg';
+    div.textContent = text;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function updateSessionInfo() {
+    const botName = selectedChatbotId
+      ? selector.options[selector.selectedIndex]?.text || selectedChatbotId
+      : '선택 안 됨';
+    sessionInfo.textContent = `세션: ${sessionId || '없음'} | 챗봇: ${botName}`;
+  }
+
+  // ── 전송 ─────────────────────────────────────────────────────────
+  async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text || !selectedChatbotId) {
+      if (!selectedChatbotId) addSystemMsg('챗봇을 먼저 선택해 주세요.');
+      return;
+    }
+
+    userInput.value = '';
+    sendBtn.disabled = true;
+    addMessage('user', text);
+
+    const assistantDiv = addMessage('assistant', '');
+    assistantDiv.classList.add('typing-indicator');
+    assistantDiv.textContent = '답변 생성 중...';
+
+    try {
+      const res = await fetch(`${BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatbot_id: selectedChatbotId,
+          message: text,
+          session_id: sessionId,
+          multi_sub_execution: multiSubCheckbox.checked,  // 사용자 선택값 전달
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        assistantDiv.textContent = `오류: ${err.detail || res.statusText}`;
+        assistantDiv.classList.remove('typing-indicator');
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let fullText = '';
+
+      assistantDiv.classList.remove('typing-indicator');
+      assistantDiv.textContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          // 남은 버퍼 처리
+          if (buffer) {
+            const lines = buffer.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const raw = line.slice(6).trim();
+                  if (!raw || raw === '{}') continue;
+                  const chunk = JSON.parse(raw);
+                  if (typeof chunk === 'string') {
+                    fullText += chunk;
+                    assistantDiv.innerHTML = parseMarkdownTable(fullText);
+                  }
+                } catch {}
+              }
+            }
+          }
+          break;
+        }
+
+        // stream: true로 incomplete UTF-8 sequences 처리
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // 마지막 라인은 incomplete일 수 있으므로 보관
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const raw = line.slice(6).trim();
+              if (!raw || raw === '{}') continue;
+              const chunk = JSON.parse(raw);
+              if (typeof chunk === 'string') {
+                fullText += chunk;
+                assistantDiv.innerHTML = parseMarkdownTable(fullText);
+              } else if (chunk.session_id) {
+                sessionId = chunk.session_id;
+                updateSessionInfo();
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch (e) {
+      assistantDiv.textContent = '오류: ' + e.message;
+      assistantDiv.classList.remove('typing-indicator');
+    } finally {
+      sendBtn.disabled = false;
+      userInput.focus();
+    }
+  }
+
+  // ── 초기화 ───────────────────────────────────────────────────────
+  loadChatbots();
+
+  sendBtn.addEventListener('click', sendMessage);
+  userInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+</script>
+
+</body>
+</html>

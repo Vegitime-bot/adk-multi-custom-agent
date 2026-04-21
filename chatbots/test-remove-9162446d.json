@@ -1,0 +1,23 @@
+{
+  "id": "test-remove-9162446d",
+  "name": "제거 테스트",
+  "description": "상위에서 제거될 챗봘",
+  "active": true,
+  "capabilities": {
+    "db_ids": [],
+    "model": "kimi-k2.5:cloud",
+    "system_prompt": "테스트"
+  },
+  "policy": {
+    "temperature": 0.3,
+    "max_tokens": 1024,
+    "stream": true,
+    "supported_modes": [
+      "tool",
+      "agent"
+    ],
+    "default_mode": "agent",
+    "max_messages": 20
+  },
+  "sub_chatbots": []
+}

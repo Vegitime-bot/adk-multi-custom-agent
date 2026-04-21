@@ -1,0 +1,23 @@
+{
+  "id": "pddi-total",
+  "name": "PDDI개발팀",
+  "description": "PDDI개발팀 전용 챗봘",
+  "level": 1,
+  "role": "agent",
+  "parent_id": "lsi-business-team",
+  "sub_chatbots": [
+    {"id": "rp-pddi-minutes", "level": 2}
+  ],
+  "retrieval": {
+    "db_ids": ["pddi-docs"]
+  },
+  "llm": {
+    "model": "gpt-4o-mini",
+    "temperature": 0.7
+  },
+  "policy": {
+    "delegation_threshold": 65,
+    "multi_sub_execution": false,
+    "keywords": ["PDDI개발팀", "PDDI", "개발팀", "주간보고", "보고"]
+  }
+}

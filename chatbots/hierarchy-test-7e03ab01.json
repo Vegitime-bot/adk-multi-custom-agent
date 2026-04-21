@@ -1,0 +1,23 @@
+{
+  "id": "hierarchy-test-7e03ab01",
+  "name": "하위 테스트 챗봘",
+  "description": "상위 Agent 테스트",
+  "active": true,
+  "capabilities": {
+    "db_ids": [],
+    "model": "kimi-k2.5:cloud",
+    "system_prompt": "test"
+  },
+  "policy": {
+    "temperature": 0.3,
+    "max_tokens": 1024,
+    "stream": true,
+    "supported_modes": [
+      "tool",
+      "agent"
+    ],
+    "default_mode": "agent",
+    "max_messages": 20
+  },
+  "sub_chatbots": []
+}

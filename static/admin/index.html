@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Store - Multi Custom Agent Service</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container": "#eceef0",
+                        "surface-dim": "#d8dadc",
+                        "surface-bright": "#f7f9fb",
+                        "surface": "#f7f9fb",
+                        "primary": "#003476",
+                        "on-primary": "#ffffff",
+                        "on-surface-variant": "#434653",
+                        "on-secondary-container": "#57657a",
+                        "on-background": "#191c1e",
+                        "secondary": "#515f74",
+                        "tertiary-container": "#620ad3",
+                        "primary-container": "#124a9b",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#d5e3fc",
+                        "background": "#f7f9fb",
+                        "on-surface": "#191c1e",
+                        "outline-variant": "#c3c6d5",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#737784",
+                        "error": "#ba1a1a",
+                        "tertiary": "#46009e",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Custom scrollbar for modal content */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c3c6d5;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+    <!-- Side Navigation -->
+    <aside class="h-screen w-64 fixed left-0 top-0 bg-slate-50 flex flex-col py-6 px-3 z-50">
+        <div class="px-4 mb-8">
+            <h1 class="text-xl font-bold text-primary font-headline tracking-tight">🤖 Chatbot Store</h1>
+            <p class="text-xs text-on-surface-variant mt-1">LSI Agent knowledge hub</p>
+        </div>
+        
+        <nav class="flex-1 space-y-1 px-1">
+            <a href="#" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-xl text-primary font-semibold border-r-4 border-primary bg-white/50 transition-all duration-200" data-view="store" onclick="switchView('store')">
+                <span class="material-symbols-outlined">storefront</span>
+                <span class="font-medium text-sm">챗봇 스토어</span>
+            </a>
+            <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200" data-view="hierarchy" onclick="switchView('hierarchy')">
+                <span class="material-symbols-outlined">account_tree</span>
+                <span class="font-medium text-sm">Agent 계층</span>
+            </a>
+            <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200" data-view="permissions" onclick="switchView('permissions')">
+                <span class="material-symbols-outlined">admin_panel_settings</span>
+                <span class="font-medium text-sm">권한 관리</span>
+            </a>
+            <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200" data-view="stats" onclick="switchView('stats')">
+                <span class="material-symbols-outlined">monitoring</span>
+                <span class="font-medium text-sm">통계</span>
+            </a>
+            <a href="#" class="nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200" data-view="settings" onclick="switchView('settings')">
+                <span class="material-symbols-outlined">settings</span>
+                <span class="font-medium text-sm">설정</span>
+            </a>
+        </nav>
+
+        <div class="mt-auto p-3">
+            <div class="bg-slate-100/50 rounded-2xl p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-sm" id="userAvatar">
+                        <span class="animate-pulse">...</span>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-sm text-on-surface" id="userName">Loading...</p>
+                        <p class="text-xs text-slate-500" id="userRole">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Top Header -->
+    <header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 z-40 glass-panel border-b border-outline-variant flex justify-between items-center px-8">
+        <div class="flex items-center gap-4 bg-surface-container-low px-4 py-2 rounded-full w-96 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+            <span class="material-symbols-outlined text-slate-400">search</span>
+            <input type="text" id="globalSearchInput" placeholder="챗봇 검색..." class="bg-transparent border-none focus:ring-0 text-sm w-full outline-none text-on-surface">
+        </div>
+        <div class="flex items-center gap-6">
+            <button id="addChatbotBtn" onclick="openAddChatbotModal()" class="hidden px-4 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">add</span> 챗봇 추가
+            </button>
+            <div class="h-8 w-px bg-slate-200"></div>
+            <button class="text-slate-500 hover:text-primary transition-colors flex items-center">
+                <span class="material-symbols-outlined">notifications</span>
+            </button>
+            <button class="text-slate-500 hover:text-primary transition-colors flex items-center">
+                <span class="material-symbols-outlined">help_outline</span>
+            </button>
+
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="ml-64 pt-24 pb-12 px-8 bg-surface min-h-screen">
+        
+        <!-- VIEW: 챗봇 스토어 -->
+        <div id="view-store" class="view active">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-outline-variant">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary-container/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-primary">smart_toy</span>
+                        </div>
+                        <div>
+                            <p class="text-3xl font-bold text-on-surface font-headline" id="statTotal">-</p>
+                            <p class="text-sm text-on-surface-variant">전체 챗봇</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-outline-variant">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-tertiary-container/10 to-tertiary/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-tertiary-container">account_tree</span>
+                        </div>
+                        <div>
+                            <p class="text-3xl font-bold text-on-surface font-headline" id="statParents">-</p>
+                            <p class="text-sm text-on-surface-variant">상위 Agent</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-outline-variant">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500/10 to-green-600/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-green-600">check_circle</span>
+                        </div>
+                        <div>
+                            <p class="text-3xl font-bold text-on-surface font-headline" id="statActive">-</p>
+                            <p class="text-sm text-on-surface-variant">활성</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="flex gap-2 mb-6">
+                <button class="tab active px-5 py-2.5 rounded-full text-sm font-medium bg-primary text-white transition-all" data-filter="all" onclick="filterChatbots('all')">전체</button>
+                <button class="tab px-5 py-2.5 rounded-full text-sm font-medium bg-white text-slate-600 hover:bg-slate-100 border border-outline-variant transition-all" data-filter="parent" onclick="filterChatbots('parent')">상위 Agent</button>
+                <button class="tab px-5 py-2.5 rounded-full text-sm font-medium bg-white text-slate-600 hover:bg-slate-100 border border-outline-variant transition-all" data-filter="child" onclick="filterChatbots('child')">하위 Agent</button>
+                <button class="tab px-5 py-2.5 rounded-full text-sm font-medium bg-white text-slate-600 hover:bg-slate-100 border border-outline-variant transition-all" data-filter="standalone" onclick="filterChatbots('standalone')">단독</button>
+            </div>
+
+            <!-- Chatbot Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="chatbotGrid">
+                <div class="col-span-full flex justify-center py-20">
+                    <div class="animate-spin w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: Agent 계층 -->
+        <div id="view-hierarchy" class="view hidden">
+            <div class="bg-white rounded-2xl p-8 shadow-sm border border-outline-variant" id="hierarchyContainer">
+                <div class="flex justify-center py-20">
+                    <div class="animate-spin w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: 권한 관리 -->
+        <div id="view-permissions" class="view hidden">
+            <!-- 권한 관리 헤더 -->
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex gap-2">
+                    <button class="user-tab active px-5 py-2.5 rounded-full text-sm font-medium bg-primary text-white transition-all" data-user-tab="restricted" onclick="switchUserTab('restricted')">Restricted Chatbots</button>
+                    <button class="user-tab px-5 py-2.5 rounded-full text-sm font-medium bg-white text-slate-600 hover:bg-slate-100 border border-outline-variant transition-all" data-user-tab="chatbot" onclick="switchUserTab('chatbot')">사용자-챗봇 권한</button>
+                    <button class="user-tab px-5 py-2.5 rounded-full text-sm font-medium bg-white text-slate-600 hover:bg-slate-100 border border-outline-variant transition-all" data-user-tab="db" onclick="switchUserTab('db')">DB 권한</button>
+                </div>
+                <button id="addPermissionBtn" onclick="openAddPermissionModal()" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base">add</span> <span id="addPermissionBtnText">추가</span>
+                </button>
+            </div>
+
+            <!-- Restricted Chatbots 컨테이너 -->
+            <div id="restrictedChatbotsContainer" class="user-tab-content">
+                <div class="bg-white rounded-2xl p-8 shadow-sm border border-outline-variant">
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold text-on-surface">Restricted Chatbots</h4>
+                        <p class="text-sm text-on-surface-variant mt-1">이 목록에 있는 챗봇은 접근 권한이 필요합니다. 목록에 없는 챗봇은 누구나 접근 가능합니다.</p>
+                    </div>
+                    
+                    <!-- 추가 입력 폼 -->
+                    <div class="flex gap-3 mb-6">
+                        <select id="restrictedChatbotSelect" 
+                            class="flex-1 px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                            <option value="">챗봇 선택...</option>
+                        </select>
+                        <button onclick="addRestrictedChatbotFromSelect()" 
+                            class="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">add</span> 추가
+                        </button>
+                    </div>
+                    
+                    <div id="restrictedChatbotsList">
+                        <div class="flex justify-center py-20">
+                            <div class="animate-spin w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 챗봇 권한 컨테이너 -->
+            <div id="chatbotPermissionsContainer" class="user-tab-content hidden">
+                <div class="bg-white rounded-2xl p-8 shadow-sm border border-outline-variant" id="permissionsContainer">
+                    <div class="flex justify-center py-20">
+                        <div class="animate-spin w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DB 권한 컨테이너 -->
+            <div id="dbPermissionsContainer" class="user-tab-content hidden">
+                <div class="bg-white rounded-2xl p-8 shadow-sm border border-outline-variant" id="dbPermissionsList">
+                    <div class="flex justify-center py-20">
+                        <div class="animate-spin w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: 통계 -->
+        <div id="view-stats" class="view hidden">
+            <div class="bg-white rounded-2xl p-8 shadow-sm border border-outline-variant" id="statsDashboard">
+                <div class="flex justify-center py-20">
+                    <div class="animate-spin w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: 설정 -->
+        <div id="view-settings" class="view hidden">
+            <div class="bg-white rounded-2xl p-8 shadow-sm border border-outline-variant max-w-3xl">
+                <h3 class="text-lg font-bold text-on-surface font-headline mb-6">⚙️ 일반 설정</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-4 border-b border-outline-variant">
+                        <span class="font-medium text-on-surface">Mock DB 사용</span>
+                        <span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold">활성화</span>
+                    </div>
+                    <div class="flex justify-between items-center py-4 border-b border-outline-variant">
+                        <span class="font-medium text-on-surface">Mock Auth 사용</span>
+                        <span class="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-semibold">활성화</span>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-bold text-on-surface font-headline mb-6 mt-10">🔗 API 엔드포인트</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center py-4 border-b border-outline-variant">
+                        <span class="font-medium text-on-surface">메인 서버</span>
+                        <code class="bg-surface-container-low px-3 py-1.5 rounded-lg text-sm text-primary font-mono">http://localhost:8080</code>
+                    </div>
+                    <div class="flex justify-between items-center py-4 border-b border-outline-variant">
+                        <span class="font-medium text-on-surface">Ingestion 서버</span>
+                        <code class="bg-surface-container-low px-3 py-1.5 rounded-lg text-sm text-primary font-mono">http://localhost:8001</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create/Edit Modal -->
+    <div class="modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" id="chatbotModal">
+        <div class="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl">
+            <div class="flex items-center justify-between px-8 py-5 border-b border-outline-variant">
+                <h3 class="text-xl font-bold font-headline text-on-surface" id="modalTitle">새 챗봇 만들기</h3>
+                <button onclick="closeModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                    <span class="material-symbols-outlined text-slate-500">close</span>
+                </button>
+            </div>
+            <div class="flex">
+                <form id="chatbotForm" class="flex-1 p-8 overflow-y-auto custom-scrollbar max-h-[calc(90vh-80px)]" onsubmit="saveChatbot(event)">
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-semibold text-on-surface mb-2">챗봇 ID *</label>
+                            <input type="text" id="chatbotId" required placeholder="예: chatbot-custom-001" 
+                                class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                            <p class="text-xs text-on-surface-variant mt-1.5">영문, 숫자, 하이픈만 사용 가능</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-on-surface mb-2">챗봇 이름 *</label>
+                            <input type="text" id="chatbotName" required placeholder="예: 커스텀 챗봇"
+                                class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-on-surface mb-2">설명</label>
+                            <textarea id="chatbotDesc" rows="2" placeholder="챗봇의 역할과 기능을 설명해주세요"
+                                class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-on-surface mb-2">챗봇 유형</label>
+                                <select id="chatbotType" onchange="onTypeChange()"
+                                    class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                                    <option value="standalone">단독 챗봇</option>
+                                    <option value="parent">상위 Agent</option>
+                                    <option value="child">하위 Agent</option>
+                                </select>
+                            </div>
+                            <div id="parentSelectGroup" class="hidden">
+                                <label class="block text-sm font-semibold text-on-surface mb-2">상위 Agent 선택</label>
+                                <select id="parentAgent"
+                                    class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                                    <option value="">선택하세요</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-on-surface mb-2">시스템 프롬프트</label>
+                            <textarea id="systemPrompt" rows="4" placeholder="챗봇의 역할을 정의하는 프롬프트를 입력하세요"
+                                class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none font-mono text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-on-surface mb-2">연결된 DB</label>
+                            <div class="space-y-3">
+                                <input type="text" id="dbInput" placeholder="DB ID 입력 (쉼표로 구분)"
+                                    class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                                <div class="flex flex-wrap gap-2" id="dbTags"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-outline-variant">
+                        <button type="button" onclick="closeModal()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">취소</button>
+                        <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity">저장</button>
+                    </div>
+                </form>
+                <!-- Guide Panel -->
+                <div class="w-80 bg-surface-container-low p-6 border-l border-outline-variant overflow-y-auto custom-scrollbar max-h-[calc(90vh-80px)]">
+                    <h4 class="text-sm font-bold text-primary mb-5 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-base">lightbulb</span>
+                        챗봇 작성 가이드
+                    </h4>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-xl p-4 border border-outline-variant">
+                            <h5 class="text-xs font-bold text-tertiary uppercase tracking-wide mb-2">Description 작성 팁</h5>
+                            <ul class="text-xs text-on-surface-variant space-y-1.5">
+                                <li>• 핵심 키워드를 명확하게 나열</li>
+                                <li>• 전문 분야와 담당 업무 명시</li>
+                                <li>• 위임 정확도에 직접 영향</li>
+                            </ul>
+                            <div class="mt-3 p-3 bg-primary/5 rounded-lg text-xs">
+                                <p class="text-primary font-medium">✓ 좋은 예:</p>
+                                <p class="text-on-surface-variant">"IT 보안, 접근권한, VPN 설정 지원"</p>
+                                <p class="text-error mt-2 font-medium">✗ 나쁜 예:</p>
+                                <p class="text-on-surface-variant">"IT 관련 챗봇"</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-4 border border-outline-variant">
+                            <h5 class="text-xs font-bold text-tertiary uppercase tracking-wide mb-2">System Prompt</h5>
+                            <ul class="text-xs text-on-surface-variant space-y-1.5">
+                                <li>• <strong>Leaf:</strong> 구체적 역할 정의</li>
+                                <li>• <strong>Parent:</strong> 위임 기준 명시</li>
+                                <li>• 명확한 경계와 제한사항</li>
+                                <li>• 응답 언어 및 형식 지정</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-white rounded-xl p-4 border border-outline-variant">
+                            <h5 class="text-xs font-bold text-tertiary uppercase tracking-wide mb-2">계층 구조 (3-Tier)</h5>
+                            <ul class="text-xs text-on-surface-variant space-y-1.5">
+                                <li>🏢 <strong>Root:</strong> 최상위 라우터</li>
+                                <li>📂 <strong>Parent:</strong> 도메인 관리자</li>
+                                <li>🤖 <strong>Leaf:</strong> 전문 처리자</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <a href="/docs/CHATBOT_CREATION_GUIDE.md" target="_blank" class="mt-4 flex items-center gap-1 text-xs font-semibold text-primary hover:gap-2 transition-all">
+                        자세한 가이드 보기 <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" id="detailModal">
+        <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">
+            <div class="flex items-center justify-between px-8 py-5 border-b border-outline-variant">
+                <h3 class="text-xl font-bold font-headline text-on-surface" id="detailTitle">챗봇 상세 정보</h3>
+                <button onclick="closeDetailModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                    <span class="material-symbols-outlined text-slate-500">close</span>
+                </button>
+            </div>
+            <div class="p-8 overflow-y-auto custom-scrollbar max-h-[calc(90vh-140px)]" id="detailContent">
+                <!-- Dynamic content -->
+            </div>
+            <div class="flex justify-end gap-3 px-8 py-5 border-t border-outline-variant">
+                <button onclick="closeDetailModal()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">닫기</button>
+                <button onclick="startChatFromDetail()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">chat</span> 채팅하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Permission Modal -->
+    <div class="modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" id="addPermissionModal">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between px-8 py-5 border-b border-outline-variant">
+                <h3 class="text-xl font-bold font-headline text-on-surface">권한 추가</h3>
+                <button onclick="closeAddPermissionModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                    <span class="material-symbols-outlined text-slate-500">close</span>
+                </button>
+            </div>
+            <form id="addPermissionForm" class="p-8" onsubmit="saveAddPermission(event)">
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-2">사용자 Knox ID *</label>
+                        <input type="text" id="addUserId" required placeholder="예: user-001"
+                            class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        <p class="text-xs text-on-surface-variant mt-1.5">사용자의 Knox ID를 입력하세요</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-2">챗봇 선택 *</label>
+                        <select id="addChatbotId" required
+                            class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                            <option value="">챗봇을 선택하세요</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-3">권한 설정</label>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="radio" name="addCanAccess" value="true" checked class="w-4 h-4 text-primary focus:ring-primary">
+                                <span class="text-sm font-medium">접근 허용</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="radio" name="addCanAccess" value="false" class="w-4 h-4 text-primary focus:ring-primary">
+                                <span class="text-sm font-medium">접근 차단</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" onclick="closeAddPermissionModal()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">취소</button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Detail Modal -->
+    <div class="modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" id="userDetailModal">
+        <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">
+            <div class="flex items-center justify-between px-8 py-5 border-b border-outline-variant">
+                <h3 class="text-xl font-bold font-headline text-on-surface" id="userDetailTitle">사용자 권한 상세</h3>
+                <button onclick="closeUserDetailModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                    <span class="material-symbols-outlined text-slate-500">close</span>
+                </button>
+            </div>
+            <div class="p-8 overflow-y-auto custom-scrollbar max-h-[calc(90vh-140px)]" id="userDetailContent">
+                <!-- Dynamic content -->
+            </div>
+            <div class="flex justify-end px-8 py-5 border-t border-outline-variant">
+                <button onclick="closeUserDetailModal()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Chatbot Modal -->
+    <div class="modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" id="addChatbotModal">
+        <div class="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl">
+            <div class="flex items-center justify-between px-8 py-5 border-b border-outline-variant">
+                <h3 class="text-xl font-bold font-headline text-on-surface">챗봇 추가</h3>
+                <button onclick="closeAddChatbotModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                    <span class="material-symbols-outlined text-slate-500">close</span>
+                </button>
+            </div>
+            <form id="addChatbotForm" onsubmit="saveNewChatbot(event)" class="p-8 overflow-y-auto max-h-[calc(90vh-140px)]">
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-2">챗봇 ID *</label>
+                        <input type="text" id="newChatbotId" required placeholder="예: chatbot-sales" pattern="[a-z0-9_-]+"
+                            class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        <p class="text-xs text-on-surface-variant mt-1.5">영문 소문자, 숫자, 하이픈, 언더스코어만 사용 가능</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-2">챗봇 이름 *</label>
+                        <input type="text" id="newChatbotName" required placeholder="예: 영업지원 챗봇"
+                            class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-2">설명</label>
+                        <textarea id="newChatbotDesc" rows="3" placeholder="챗봇의 역할과 기능을 설명해주세요"
+                            class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-3">챗봇 유형</label>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="newChatbotType" value="standalone" checked class="w-4 h-4 text-primary">
+                                <span class="text-sm">단독 Agent</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="newChatbotType" value="parent" class="w-4 h-4 text-primary">
+                                <span class="text-sm">상위 Agent (Parent)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="newChatbotType" value="child" class="w-4 h-4 text-primary">
+                                <span class="text-sm">하위 Agent (Child)</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="parentSelectContainer" class="hidden">
+                        <label class="block text-sm font-semibold text-on-surface mb-2">상위 Agent 선택</label>
+                        <select id="newChatbotParent" class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white">
+                            <option value="">상위 Agent를 선택하세요</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-2">시스템 프롬프트</label>
+                        <textarea id="newChatbotPrompt" rows="4" placeholder="AI에게 주어질 역할과 지침을 작성해주세요"
+                            class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all resize-none"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-2">연결할 DB</label>
+                        <div id="dbSelectionContainer" class="space-y-2 max-h-40 overflow-y-auto border border-outline-variant rounded-xl p-3">
+                            <!-- DB 체크박스들이 여기에 동적으로 생성됩니다 -->
+                            <p class="text-xs text-on-surface-variant">DB 목록을 불러오는 중...</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-on-surface mb-2">검색 키워드</label>
+                        <input type="text" id="newChatbotKeywords" placeholder="예: 보안, 접근권한, VPN (쉼표로 구분)"
+                            class="w-full px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        <p class="text-xs text-on-surface-variant mt-1.5">쉼표로 구분하여 입력 (검색 및 위임 시 사용)</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-3 mt-8">
+                    <button type="button" onclick="closeAddChatbotModal()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">취소</button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity">생성</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" id="deleteModal">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl">
+            <div class="flex items-center justify-between px-8 py-5 border-b border-outline-variant">
+                <h3 class="text-xl font-bold font-headline text-on-surface">챗봇 삭제</h3>
+                <button onclick="closeDeleteModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors">
+                    <span class="material-symbols-outlined text-slate-500">close</span>
+                </button>
+            </div>
+            <div class="p-8">
+                <p class="text-on-surface">정말로 <strong id="deleteChatbotName" class="text-primary"></strong>을(를) 삭제하시겠습니까?</p>
+                <p class="text-error text-sm mt-2">이 작업은 되돌릴 수 없습니다.</p>
+            </div>
+            <div class="flex justify-end gap-3 px-8 py-5 border-t border-outline-variant">
+                <button onclick="closeDeleteModal()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">취소</button>
+                <button onclick="confirmDelete()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-error to-red-600 hover:opacity-90 transition-opacity">삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 px-6 py-4 rounded-2xl text-white font-semibold shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 z-[2000]"></div>
+
+    <script src="/static/admin/app.js"></script>
+</body>
+</html>
