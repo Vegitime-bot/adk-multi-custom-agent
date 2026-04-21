@@ -91,30 +91,12 @@ def create_app() -> FastAPI:
     )
 
     # ── SSO 인증 (Mock Auth 아닐 때만) ────────────────────────────
+    # NOTE: SSO는 사내 환경에서 별도 구현 필요
+    # 현재는 Mock Auth만 사용 (USE_MOCK_AUTH=true 권장)
     if not settings.USE_MOCK_AUTH:
-        try:
-            from backend.api.sso import router as sso_router
-            app.include_router(sso_router, prefix="")  # 루트에 등록
-            print("[Startup] SSO 인증 라우터 등록됨 (/, /sso, /acs, /slo)")
-        except Exception as e:
-            print(f"[Startup] SSO 라우터 로드 실패: {e}")
-            
-        # 루트 경로: 인증되면 /admin으로, 미인증이면 /sso로
-        @app.get("/")
-        async def root_with_sso_check(request: Request):
-            """
-            루트 경로: SSO 인증 상태에 따라 분기
-            - 인증됨: /main으로 리다이렉트 (관리자 페이지)
-            - 미인증: /sso로 리다이렉트 (SSO 로그인)
-            """
-            try:
-                if request.session.get('sso'):
-                    return RedirectResponse(url="/main")
-                return RedirectResponse(url="/sso")
-            except Exception:
-                return RedirectResponse(url="/sso")
-    else:
-        # Mock Auth: 챗봇 UI를 루트에 표시
+        print("[Startup] WARNING: SSO not implemented in ADK version. Use USE_MOCK_AUTH=true")
+    
+    # Mock Auth: 챗봇 UI를 루트에 표시
         @app.get("/", response_class=HTMLResponse)
         def index():
             html_file = STATIC_DIR / "index.html"
