@@ -60,7 +60,7 @@ class TestADKConfig:
     def test_adk_version_set(self):
         """Test that ADK_VERSION is set correctly."""
         from backend.config import settings
-        assert settings.ADK_VERSION == "1.31.1"
+        assert settings.ADK_VERSION == "1.18.0"
 
 
 class TestADKSessionWrapper:

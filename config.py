@@ -79,6 +79,10 @@ class Settings:
     SSO_LOGOUT_URL: str = os.getenv("SSO_LOGOUT_URL", "")  # Optional
     SSO_SCOPES: str = os.getenv("SSO_SCOPES", "openid email profile")
 
+    # ── ADK 설정 ──────────────────────────────────────────────────
+    USE_ADK: bool = os.getenv("USE_ADK", "false").lower() == "true"
+    ADK_VERSION: str = "1.18.0"  # PyPI 최신 버전 (사내: 1.31.1)
+
     # ── 관리자 설정 ─────────────────────────────────────────────────
     # Admin 권한을 가진 SSO 사용자 ID 목록 (콤마로 구분)
     ADMIN_USER_IDS: list[str] = [uid.strip() for uid in os.getenv("ADMIN_USER_IDS", "user-001").split(",") if uid.strip()]
