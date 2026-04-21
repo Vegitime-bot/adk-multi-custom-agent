@@ -1,0 +1,78 @@
+{
+  "session_migration": {
+    "adk_equivalent": "google.adk.sessions.SessionService (BaseSessionService)",
+    "mapping_strategy": "ADK의 InMemorySessionService 사용으로 영속성 제공. 세션 ID는 ADK session.id와 동일하게 유지. chatbot_id/user_knox_id/role_override/active_level은 ADK session.state 딕셔너리에 저장.",
+    "interface_changes": "SessionManager.get_or_create() → ADKSessionWrapper.get_or_create(). _sessions 딕셔너리 → BaseSessionService.get_session()/create_session(). ChatSession dataclass → ADK Session 객체 + state 딕셔너리."
+  },
+  "memory_migration": {
+    "adk_equivalent": "google.adk.memory.Memory (BaseMemory)",
+    "mapping_strategy": "ADK의 InMemoryMemory 사용. (chatbot_id, session_id) 키는 ADK의 Memory에서 자동 관리. append_pair()는 ADK의 Memory.add_message()로 대체. max_messages는 Memory 설정의 max_history_length로 매핑.",
+    "interface_changes": "MemoryManager.get_history() → ADKMemoryWrapper.get_history(). MemoryManager.append_pair() → ADKMemoryWrapper.add_user_message() + add_assistant_message(). _store 딕셔너리 → ADK Memory 인스턴스."
+  },
+  "files_to_modify": [
+    {
+      "file": "backend/config.py",
+      "changes": "USE_ADK 환경변수 추가. ADK 설정(세션 저장소 타입, 메모리 타입, 프로젝트 설정) 추가. ADK가 사용하는 DATABASE_URL과 기존 PostgreSQL 연동 확인."
+    },
+    {
+      "file": "backend/managers/session_manager.py",
+      "changes": "ADK SessionService로 마이그레이션. InMemorySessionService 인스턴스 사용. create_session/get_or_create/get_session 메소드가 ADK SessionService 호출하도록 수정. ChatSession → ADK Session 매핑 로직 추가."
+    },
+    {
+      "file": "backend/managers/memory_manager.py",
+      "changes": "ADK Memory로 마이그레이션. InMemoryMemory 인스턴스 사용. append_pair/get_history 메소드가 ADK Memory 인터페이스 호출하도록 수정."
+    },
+    {
+      "file": "backend/core/models.py",
+      "changes": "ChatSession dataclass는 ADK Session으로 대체되지만, 하위호환을 위해 유지하되 to_dict()가 ADK Session 형식으로 변환하도록 수정. Message dataclass는 ADK Content/Part로 매핑 가능하도록 변환 메소드 추가."
+    },
+    {
+      "file": "app.py",
+      "changes": "lifespan에서 SessionManager/MemoryManager 초기화 시 USE_ADK 환경변수 확인. ADK 모드일 때 ADK SessionService/Memory 인스턴스 생성."
+    },
+    {
+      "file": "backend/api/chat.py",
+      "changes": "session_mgr.get_or_create() 호출부 유지 (내부 구현만 변경). memory_mgr.append_pair() 호출부 유지 (내부 구현만 변경)."
+    },
+    {
+      "file": "requirements.txt",
+      "changes": "google-adk 패키지 추가. ADK 의존성 버전 호환성 확인 (pydantic v2 지원 확인)."
+    }
+  ],
+  "files_to_create": [
+    {
+      "file": "backend/adk/adk_session_wrapper.py",
+      "purpose": "ADK SessionService를 기존 SessionManager 인터페이스로 래핑. get_or_create(), get_session(), close_session() 메소드 제공."
+    },
+    {
+      "file": "backend/adk/adk_memory_wrapper.py",
+      "purpose": "ADK Memory를 기존 MemoryManager 인터페스로 래핑. get_history(), append_pair(), clear() 메소드 제공."
+    },
+    {
+      "file": "backend/adk/adk_models_adapter.py",
+      "purpose": "ChatSession, Message 등 기존 모델과 ADK Session, Content 간 변환 함수."
+    },
+    {
+      "file": "backend/adk/__init__.py",
+      "purpose": "ADK 모듈 초기화 및 편의 export."
+    },
+    {
+      "file": "tests/test_adk_migration.py",
+      "purpose": "ADK 마이그레이션 테스트 - 기존 세션/메모리 기능이 ADK에서도 동작하는지 검증."
+    }
+  ],
+  "migration_steps": [
+    "1. requirements.txt에 google-adk 패키지 추가 및 설치 (pip install -r requirements.txt)",
+    "2. backend/adk/ 디렉토리 생성 및 __init__.py, adk_session_wrapper.py, adk_memory_wrapper.py, adk_models_adapter.py 작성",
+    "3. backend/config.py에 USE_ADK 환경변수 및 ADK 설정 추가",
+    "4. backend/managers/session_manager.py 수정 - USE_ADK 플래그 확인 후 ADKSessionWrapper 또는 기존 구현 사용",
+    "5. backend/managers/memory_manager.py 수정 - USE_ADK 플래그 확인 후 ADKMemoryWrapper 또는 기존 구현 사용",
+    "6. backend/core/models.py에 ADK 변환 메소드 추가 (to_adk_session(), to_adk_content())",
+    "7. app.py lifespan 수정 - USE_ADK에 따라 ADK 인스턴스 또는 기존 인스턴스 생성",
+    "8. 기존 테스트 실행으로 회귀 테스트 (USE_ADK=false 상태)",
+    "9. USE_ADK=true 설정 후 ADK 통합 테스트 실행 (test_adk_migration.py)",
+    "10. ChatSession.role_override, active_level 등 ADK state에 저장되는지 확인",
+    "11. MemoryManager max_messages가 ADK Memory 설정에 반영되는지 확인",
+    "12. 통합 테스트 완료 후 문서화 및 배포"
+  ]
+}

@@ -40,6 +40,8 @@ except ImportError:
         INGESTION_BASE_URL: str = os.getenv("INGESTION_BASE_URL", "http://localhost:8001")
         INGESTION_API_KEY: str = os.getenv("INGESTION_API_KEY", "")
         SSL_VERIFY: bool = os.getenv("SSL_VERIFY", "false").lower() == "true"
+        USE_ADK: bool = os.getenv("USE_ADK", "false").lower() == "true"
+        ADK_VERSION: str = "1.31.1"
         CHATBOTS_DIR: Path = Path(__file__).parent.parent / "chatbots"
         HOST: str = os.getenv("HOST", "0.0.0.0")
         PORT: int = int(os.getenv("PORT", "8080"))
