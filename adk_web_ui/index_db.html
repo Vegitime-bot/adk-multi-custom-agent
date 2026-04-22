@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADK Agent Chat - DB Mode</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* 사이드바 */
+        .sidebar {
+            width: 280px;
+            background: #1a1a2e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #2d2d44;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #2d2d44;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        .new-chat-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .sessions-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .session-item {
+            padding: 12px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+        }
+        
+        .session-item:hover {
+            background: #2d2d44;
+        }
+        
+        .session-item.active {
+            background: #667eea;
+        }
+        
+        .session-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .session-meta {
+            font-size: 11px;
+            opacity: 0.7;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .session-delete-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .session-item:hover .session-delete-btn {
+            opacity: 1;
+        }
+        
+        .session-delete-btn:hover {
+            color: #ff6b6b;
+        }
+        
+        .sidebar-footer {
+            padding: 15px;
+            border-top: 1px solid #2d2d44;
+            background: #16162a;
+        }
+        
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .user-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .user-role {
+            font-size: 11px;
+            color: #888;
+        }
+        
+        .admin-link {
+            display: block;
+            padding: 8px 12px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        
+        .admin-link:hover {
+            background: #5a67d8;
+        }
+        
+        /* 메인 영역 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        .welcome-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .welcome-screen h2 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-screen p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .agent-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        .agent-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        
+        .agent-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        
+        .agent-card h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .agent-card p {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        /* 채팅 화면 */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            display: none;
+        }
+        
+        .chat-header {
+            background: white;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .chat-header h2 {
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .delegation-badge {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        
+        .chat-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .reset-btn {
+            background: #fff3e0;
+            color: #f57c00;
+            border: 1px solid #ffcc80;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .reset-btn:hover {
+            background: #ffe0b2;
+        }
+        
+        .close-chat-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+            padding: 5px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user {
+            text-align: right;
+        }
+        
+        .message-bubble {
+            display: inline-block;
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            text-align: left;
+        }
+        
+        .message.user .message-bubble {
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.assistant .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        
+        .message-agent {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+            margin-left: 4px;
+        }
+        
+        .message.user .message-agent {
+            text-align: right;
+            margin-right: 4px;
+        }
+        
+        .chat-input-area {
+            background: white;
+            border-top: 1px solid #e9ecef;
+            padding: 15px 20px;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #e9ecef;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+        
+        .send-btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        .send-btn:hover:not(:disabled) {
+            background: #5a67d8;
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* 로딩 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* 빈 상태 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 사이드바: 세션 목록 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>💬 채팅 세션</h1>
+                <button class="new-chat-btn" onclick="createNewSession()">
+                    + 새 채팅 시작
+                </button>
+            </div>
+            <div class="sessions-list" id="sessionsList">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>세션 목록 로딩 중...</p>
+                </div>
+            </div>
+            <!-- 사용자 정보 푸터 -->
+            <div class="sidebar-footer" id="userFooter" style="display: none;">
+                <div class="user-info">
+                    <span class="user-name" id="footerUserName"></span>
+                    <span class="user-role" id="footerUserRole"></span>
+                </div>
+                <a href="/admin" class="admin-link" id="adminLink" style="display: none;">
+                    ⚙️ 관리자
+                </a>
+            </div>
+        </aside>
+        
+        <!-- 메인 콘텐츠 -->
+        <main class="main-content">
+            <!-- 웰컴 화면 -->
+            <div class="welcome-screen" id="welcomeScreen">
+                <h2>ADK Agent와 대화를 시작하세요</h2>
+                <p>아래 Agent 중 하나를 선택하여 새로운 채팅을 시작하거나,<br>왼쪽 목록에서 기존 세션을 선택하세요.</p>
+                <div class="agent-cards" id="agentCards">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Agent 목록 로딩 중...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 채팅 화면 -->
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-header">
+                    <div class="chat-header-left">
+                        <h2 id="chatTitle">대화 중...</h2>
+                        <span class="delegation-badge" id="delegationBadge" style="display: none;"></span>
+                    </div>
+                    <div class="chat-actions">
+                        <button class="reset-btn" onclick="resetCurrentSession()">
+                            🔄 초기화
+                        </button>
+                        <button class="close-chat-btn" onclick="closeChat()">×</button>
+                    </div>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <!-- 메시지가 여기에 추가됨 -->
+                </div>
+                
+                <div class="chat-input-area">
+                    <div class="input-container">
+                        <input type="text" class="chat-input" id="messageInput" 
+                               placeholder="메시지를 입력하세요..." 
+                               onkeypress="handleKeyPress(event)">
+                        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                            전송
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // 상태 관리 (기존 admin 방식 활용)
+        const AppState = {
+            currentSessionId: null,
+            currentAgent: null,
+            sessions: [],
+            agents: [],
+            knoxId: '',
+            isAdmin: false,
+            currentUser: null
+        };
+        
+        // 페이지 로드 시 Knox ID 가져오기 (기존 admin 방식)
+        async function loadCurrentUser() {
+            try {
+                const response = await fetch('/main/api/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    AppState.currentUser = user;
+                    AppState.knoxId = user.knox_id || '';
+                    AppState.isAdmin = user.is_admin || false;
+                    console.log('User loaded:', AppState.knoxId, 'Admin:', AppState.isAdmin);
+                    
+                    // 사이드바 푸터 업데이트
+                    updateUserFooter();
+                    
+                    // 세션 로드
+                    await loadSessions();
+                } else {
+                    console.warn('Failed to load user, using test mode');
+                    AppState.knoxId = 'test_user_' + Date.now();
+                    updateUserFooter();
+                    await loadSessions();
+                }
+            } catch (error) {
+                console.error('User load error:', error);
+                AppState.knoxId = 'test_user_' + Date.now();
+                updateUserFooter();
+                await loadSessions();
+            }
+        }
+        
+        // 사용자 푸터 UI 업데이트
+        function updateUserFooter() {
+            const footer = document.getElementById('userFooter');
+            const userName = document.getElementById('footerUserName');
+            const userRole = document.getElementById('footerUserRole');
+            const adminLink = document.getElementById('adminLink');
+            
+            if (footer) footer.style.display = 'block';
+            if (userName) userName.textContent = AppState.knoxId || 'Unknown';
+            if (userRole) userRole.textContent = AppState.isAdmin ? '관리자' : '사용자';
+            if (adminLink && AppState.isAdmin) adminLink.style.display = 'block';
+        }
+        
+        // API 호출 헬퍼 (Knox ID 헤더 포함)
+        async function apiCall(url, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'x-knox-id': AppState.knoxId,
+                ...options.headers
+            };
+            
+            const response = await fetch(url, { ...options, headers });
+            
+            if (response.status === 401) {
+                alert('인증이 필요합니다. 다시 로그인해주세요.');
+                window.location.href = '/main/login';
+                throw new Error('Unauthorized');
+            }
+            
+            if (response.status === 403) {
+                alert('접근 권한이 없습니다.');
+                throw new Error('Forbidden');
+            }
+            
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || `HTTP ${response.status}`);
+            }
+            
+            return response.json();
+        }
+        
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAgents();
+            await loadCurrentUser();  // Knox ID 로드 후 세션 로드
+            
+            // URL에서 세션 ID 확인
+            const hash = window.location.hash;
+            if (hash.startsWith('#session=')) {
+                const sessionId = hash.replace('#session=', '');
+                selectSession(sessionId);
+            }
+        });
+        
+        // Agent 목록 로드
+        async function loadAgents() {
+            try {
+                const agents = await apiCall('/api/agents/detail');
+                AppState.agents = agents;
+                renderAgentCards();
+            } catch (error) {
+                console.error('Agent 로드 실패:', error);
+                document.getElementById('agentCards').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Agent 목록을 불러올 수 없습니다</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // 세션 목록 로드
+        async function loadSessions() {
+            try {
+                const response = await fetch('/api/sessions');
+                const data = await response.json();
+                AppState.sessions = data.sessions || [];
+                renderSessionsList();
+            } catch (error) {
+                console.error('세션 로드 실패:', error);
+                document.getElementById('sessionsList').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>세션을 불러올 수 없습니다</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Agent 카드 렌더링
+        function renderAgentCards() {
+            const container = document.getElementById('agentCards');
+            container.innerHTML = AppState.agents.map(agent => `
+                <div class="agent-card" onclick="startNewChat('${agent.id}')">
+                    <h3>${agent.name}</h3>
+                    <p>${agent.description}</p>
+                </div>
+            `).join('');
+        }
+        
+        // 세션 목록 렌더링
+        function renderSessionsList() {
+            const container = document.getElementById('sessionsList');
+            
+            if (AppState.sessions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">💬</div>
+                        <p>새 채팅을 시작하세요</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = AppState.sessions.map(session => {
+                const date = new Date(session.updated_at);
+                const timeStr = date.toLocaleTimeString('ko-KR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                const dateStr = date.toLocaleDateString('ko-KR', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                return `
+                    <div class="session-item ${session.session_id === AppState.currentSessionId ? 'active' : ''}" 
+                         onclick="selectSession('${session.session_id}')"
+                         data-session-id="${session.session_id}">
+                        <div class="session-name">세션 ${session.session_id.slice(-6)}</div>
+                        <div class="session-meta">
+                            <span>${dateStr} ${timeStr}</span>
+                            <span>${session.message_count}개 메시지</span>
+                        </div>
+                        <button class="session-delete-btn" 
+                                onclick="event.stopPropagation(); deleteSession('${session.session_id}')"
+                                title="세션 삭제">×</button>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // 새 채팅 시작
+        function startNewChat(agentId) {
+            const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            AppState.currentAgent = agentId;
+            AppState.currentSessionId = sessionId;
+            
+            // URL 업데이트
+            window.location.hash = '#session=' + sessionId;
+            
+            // UI 전환
+            showChat();
+            document.getElementById('chatTitle').textContent = '새 대화';
+            document.getElementById('chatMessages').innerHTML = '';
+            document.getElementById('delegationBadge').style.display = 'none';
+            
+            // 세션 목록에 추가 (로컬에서만)
+            const newSession = {
+                session_id: sessionId,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                message_count: 0,
+                delegation_chain: [agentId]
+            };
+            AppState.sessions.unshift(newSession);
+            renderSessionsList();
+        }
+        
+        // 세션 선택 - 자동으로 히스토리 로드
+        async function selectSession(sessionId) {
+            AppState.currentSessionId = sessionId;
+            
+            // URL 업데이트
+            window.location.hash = '#session=' + sessionId;
+            
+            // UI 업데이트
+            document.querySelectorAll('.session-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            const item = document.querySelector(`[data-session-id="${sessionId}"]`);
+            if (item) item.classList.add('active');
+            
+            // 채팅 화면 표시
+            showChat();
+            
+            // 로딩 표시
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>이전 채팅 내역을 불러오는 중...</p>
+                </div>
+            `;
+            
+            // 히스토리 자동 로드 (기본 동작)
+            await loadSessionHistory(sessionId);
+        }
+        
+        // 세션 히스토리 로드
+        async function loadSessionHistory(sessionId) {
+            try {
+                const response = await fetch(`/api/session/${sessionId}/history`);
+                const data = await response.json();
+                
+                // 제목 업데이트
+                const session = AppState.sessions.find(s => s.session_id === sessionId);
+                if (session) {
+                    document.getElementById('chatTitle').textContent = 
+                        `세션 ${sessionId.slice(-6)}`;
+                }
+                
+                // 위임 체인 표시
+                if (data.delegation_chain && data.delegation_chain.length > 0) {
+                    const badge = document.getElementById('delegationBadge');
+                    badge.textContent = data.delegation_chain.join(' → ');
+                    badge.style.display = 'inline-block';
+                }
+                
+                // 메시지 렌더링
+                const container = document.getElementById('chatMessages');
+                if (data.history && data.history.length > 0) {
+                    container.innerHTML = data.history.map(msg => `
+                        <div class="message ${msg.role}">
+                            <div class="message-bubble">${escapeHtml(msg.content)}</div>
+                            <div class="message-agent">${msg.agent_id || ''}</div>
+                        </div>
+                    `).join('');
+                    scrollToBottom();
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">💬</div>
+                            <p>메시지를 입력하여 대화를 시작하세요</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('히스토리 로드 실패:', error);
+                showError('히스토리를 불러올 수 없습니다');
+            }
+        }
+        
+        // 메시지 전송
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message || !AppState.currentSessionId) return;
+            
+            // 현재 Agent 확인
+            let agentId = AppState.currentAgent;
+            if (!agentId) {
+                // 세션에서 초기 Agent 찾기
+                const session = AppState.sessions.find(s => s.session_id === AppState.currentSessionId);
+                if (session && session.delegation_chain) {
+                    agentId = session.delegation_chain[0];
+                }
+            }
+            
+            if (!agentId) {
+                showError('Agent를 선택해주세요');
+                return;
+            }
+            
+            input.value = '';
+            addMessage(message, 'user', agentId);
+            
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '...';
+            
+            try {
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent: agentId,
+                        message: message,
+                        session_id: AppState.currentSessionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.response) {
+                    addMessage(data.response, 'assistant', data.agent_used);
+                    
+                    // 위임 체인 업데이트
+                    if (data.delegation_chain) {
+                        const badge = document.getElementById('delegationBadge');
+                        badge.textContent = data.delegation_chain.join(' → ');
+                        badge.style.display = 'inline-block';
+                    }
+                    
+                    // 세션 목록 새로고침
+                    await loadSessions();
+                } else {
+                    showError(data.error || '응답을 받지 못했습니다');
+                }
+            } catch (error) {
+                showError('메시지 전송 실패: ' + error.message);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '전송';
+            }
+        }
+        
+        // 메시지 추가
+        function addMessage(text, sender, agentId) {
+            const container = document.getElementById('chatMessages');
+            
+            // 빈 상태 제거
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.innerHTML = `
+                <div class="message-bubble">${escapeHtml(text)}</div>
+                <div class="message-agent">${agentId || ''}</div>
+            `;
+            container.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        // 세션 초기화
+        async function resetCurrentSession() {
+            if (!AppState.currentSessionId) return;
+            
+            if (!confirm('현재 세션의 모든 메시지를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/session/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: AppState.currentSessionId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // UI 초기화
+                    document.getElementById('chatMessages').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔄</div>
+                            <p>세션이 초기화되었습니다. 새 대화를 시작하세요.</p>
+                        </div>
+                    `;
+                    document.getElementById('delegationBadge').style.display = 'none';
+                    
+                    // 세션 목록 새로고침
+                    await loadSessions();
+                    
+                    showSuccess('세션이 초기화되었습니다');
+                }
+            } catch (error) {
+                showError('세션 초기화 실패: ' + error.message);
+            }
+        }
+        
+        // 세션 삭제
+        async function deleteSession(sessionId) {
+            if (!confirm('이 세션을 삭제하시겠습니까?\n모든 메시지가 영구 삭제됩니다.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/session/${sessionId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // 현재 보고 있던 세션이면 웰컴 화면으로
+                    if (AppState.currentSessionId === sessionId) {
+                        closeChat();
+                    }
+                    
+                    // 목록 새로고침
+                    await loadSessions();
+                    showSuccess('세션이 삭제되었습니다');
+                }
+            } catch (error) {
+                showError('세션 삭제 실패: ' + error.message);
+            }
+        }
+        
+        // UI 헬퍼 함수
+        function showChat() {
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'flex';
+        }
+        
+        function closeChat() {
+            AppState.currentSessionId = null;
+            AppState.currentAgent = null;
+            window.location.hash = '';
+            document.getElementById('chatContainer').style.display = 'none';
+            document.getElementById('welcomeScreen').style.display = 'flex';
+            document.querySelectorAll('.session-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+        
+        function createNewSession() {
+            closeChat();
+            // 웰컴 화면에서 사용자가 Agent 카드를 선택하도록 함
+            document.getElementById('welcomeScreen').style.display = 'flex';
+        }
+        
+        function scrollToBottom() {
+            const container = document.getElementById('chatMessages');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function showError(message) {
+            // 간단한 에러 표시 (추후 토스트로 개선 가능)
+            alert('오류: ' + message);
+        }
+        
+        function showSuccess(message) {
+            // 간단한 성공 표시
+            console.log('성공:', message);
+        }
+        
+        // 뒤로/앞으로 가기 처리
+        window.addEventListener('popstate', () => {
+            const hash = window.location.hash;
+            if (hash.startsWith('#session=')) {
+                const sessionId = hash.replace('#session=', '');
+                selectSession(sessionId);
+            } else {
+                closeChat();
+            }
+        });
+    </script>
+</body>
+</html>
