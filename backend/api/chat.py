@@ -12,7 +12,7 @@ api/chat.py - 채팅 API + SSE 스트리밍 (Executor 기반 리팩토링)
 import json
 import time
 import traceback
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -44,18 +44,18 @@ router = APIRouter(prefix="/api", tags=["chat"])
 class ChatRequest(BaseModel):
     chatbot_id: str
     message: str
-    session_id: str | None = None
-    mode: str | None = None  # "tool" | "agent" | None (None이면 default_mode 사용)
-    role_override: dict[str, str] | None = None  # 하위호환
+    session_id: Optional[str] = None
+    mode: Optional[str] = None  # "tool" | "agent" | None (None이면 default_mode 사용)
+    role_override: Optional[Dict[str, str]] = None  # 하위호환
     active_level: int = 1
-    multi_sub_execution: bool | None = None  # 사용자 선택값 (None이면 챗봇 기본값 사용)
+    multi_sub_execution: Optional[bool] = None  # 사용자 선택값 (None이면 챗봇 기본값 사용)
 
 
 class SessionCreateRequest(BaseModel):
     chatbot_id: str
-    session_id: str | None = None
-    mode: str | None = None
-    role_override: dict[str, str] | None = None
+    session_id: Optional[str] = None
+    mode: Optional[str] = None
+    role_override: Optional[Dict[str, str]] = None
     active_level: int = 1
 
 
@@ -571,7 +571,7 @@ def close_session(
 class ToolRequest(BaseModel):
     """Tool 모드 요청 - 단발성 함수 호출"""
     message: str
-    context: dict | None = None  # 추가 컨텍스트 (선택)
+    context: Optional[dict] = None  # 추가 컨텍스트 (선택)
 
 
 class AgentRequest(BaseModel):

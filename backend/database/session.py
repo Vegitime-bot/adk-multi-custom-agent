@@ -9,12 +9,19 @@ from contextlib import contextmanager
 
 from backend.config import settings
 
-# ── SQLAlchemy 엔진 설정 ───────────────────────────────────────────
+USE_MOCK_DB = settings.USE_MOCK_DB
+
+# ── SQLite로 변경 (PostgreSQL 대신) ───────────────────────────────
+SQLITE_URL = "sqlite:///./chatbot.db"
+
+# ── SQLite로 변경 (PostgreSQL 대신) ───────────────────────────────
+SQLITE_URL = "sqlite:///./chatbot.db"
 engine = create_engine(
-    settings.DATABASE_URL,
+    SQLITE_URL if USE_MOCK_DB else settings.DATABASE_URL,
     pool_pre_ping=True,  # 연결 끊김 방지
     pool_recycle=3600,   # 1시간마다 연결 재생성
     echo=settings.DEBUG, # DEBUG 모드에서 SQL 로깅
+    connect_args={"check_same_thread": False} if USE_MOCK_DB else {}
 )
 
 # 세션 팩토리

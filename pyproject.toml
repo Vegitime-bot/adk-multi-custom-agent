@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adk-multi-custom-agent"
+version = "0.1.0"
+description = "Google ADK 기반 멀티 테넌트 RAG 챗봇 플랫폼"
+requires-python = ">=3.9"
+
+[tool.setuptools]
+packages = ["backend"]
+
+# Python 3.9에서 | union 문법 지원
+[tool.pyright]
+pythonVersion = "3.9"
+executionEnvironments = [{ pythonVersion = "3.9" }]
