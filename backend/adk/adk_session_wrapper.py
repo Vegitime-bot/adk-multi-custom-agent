@@ -171,22 +171,43 @@ class ADKSessionWrapper:
     
     def _adk_get_session(self, session_id: str) -> Optional[ChatSession]:
         """ADK 기반 세션 조회."""
-        # ADK는 user_id가 필요하므로, 모든 사용자 세션을 검색해야 함
-        # 실제로는 user_knox_id를 알아야 하지만, 인메모리 구현에서는 순회 가능
-        sessions = self._session_service._sessions if hasattr(
-            self._session_service, '_sessions'
-        ) else {}
+        # 먼저 로컬 캐시에서 확인
+        if session_id in self._local_sessions:
+            return self._local_sessions[session_id]
         
-        for key, session in sessions.items():
-            if session.session_id == session_id:
-                return self._adk_to_chat_session(session)
+        # ADK에서 모든 사용자 세션을 검색
+        try:
+            # list_sessions로 모든 세션 조회
+            all_sessions = self._session_service.list_sessions(
+                app_name="multi_custom_agent",
+                user_id="*",  # 와일드카드로 모든 사용자
+            )
+            for session in all_sessions:
+                if session.session_id == session_id:
+                    chat_session = self._adk_to_chat_session(session)
+                    # 로컬 캐시에 저장
+                    self._local_sessions[session_id] = chat_session
+                    return chat_session
+        except Exception:
+            # list_sessions 실패 시 내부 _sessions 순회
+            if hasattr(self._session_service, '_sessions'):
+                for key, session in self._session_service._sessions.items():
+                    if session.session_id == session_id:
+                        chat_session = self._adk_to_chat_session(session)
+                        self._local_sessions[session_id] = chat_session
+                        return chat_session
         
         return None
     
     def _adk_close_session(self, session_id: str) -> bool:
         """ADK 기반 세션 종료."""
-        # ADK InMemorySessionService는 delete_session이 없으므로 
-        # 내부 _sessions dict에서 직접 제거
+        # 로컬 캐시에서 제거
+        local_removed = False
+        if session_id in self._local_sessions:
+            del self._local_sessions[session_id]
+            local_removed = True
+        
+        # ADK 내부 _sessions에서도 제거
         if hasattr(self._session_service, '_sessions'):
             sessions = self._session_service._sessions
             keys_to_remove = [
@@ -195,8 +216,9 @@ class ADKSessionWrapper:
             ]
             for key in keys_to_remove:
                 del sessions[key]
-            return len(keys_to_remove) > 0
-        return False
+            return local_removed or len(keys_to_remove) > 0
+        
+        return local_removed
     
     def _find_recent_session(
         self,
@@ -406,6 +428,8 @@ class ADKSessionWrapper:
                 session_id=sid,
                 state=state,
             )
+            # 로컬 캐시에도 저장 (get_session용)
+            self._local_sessions[sid] = session
             logger.info(f"[ADKSessionWrapper] Created ADK session via create_session: {sid}")
         else:
             self._local_sessions[sid] = session
