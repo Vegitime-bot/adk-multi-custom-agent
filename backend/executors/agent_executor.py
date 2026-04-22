@@ -9,6 +9,9 @@ from backend.core.models import ChatbotDef, Message
 from backend.executors.base_executor import BaseExecutor
 from backend.managers.memory_manager import MemoryManager
 from backend.retrieval.ingestion_client import IngestionClient
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class AgentExecutor(BaseExecutor):
@@ -44,36 +47,49 @@ class AgentExecutor(BaseExecutor):
             LLM 응답 청크
         """
         # DEBUG: 실행 정보 로깅
-        print(f"[DEBUG AgentExecutor] ========== START ==========")
-        print(f"[DEBUG AgentExecutor] chatbot_id: {self.chatbot_def.id}")
-        print(f"[DEBUG AgentExecutor] session_id: {session_id}")
-        print(f"[DEBUG AgentExecutor] db_ids: {self.chatbot_def.retrieval.db_ids}")
-        print(f"[DEBUG AgentExecutor] query: {message[:100]}...")
+        logger.debug("AgentExecutor 실행 시작", extra={
+            "chatbot_id": self.chatbot_def.id,
+            "session_id": session_id,
+            "db_ids": self.chatbot_def.retrieval.db_ids,
+            "query_preview": message[:100]
+        })
         
         # 1. 메모리에서 히스토리 복원
         history = self.memory.get_history(self.chatbot_def.id, session_id)
-        print(f"[DEBUG AgentExecutor] history loaded: {len(history)} messages")
+        logger.debug("히스토리 로드 완료", extra={
+            "chatbot_id": self.chatbot_def.id,
+            "session_id": session_id,
+            "history_count": len(history)
+        })
 
         # 2. 히스토리 압축 및 검색 쿼리 확장
         compacted = self._compact_history(history)
         if compacted:
-            print(f"[DEBUG AgentExecutor] compacted history:\n{compacted[:200]}...")
+            logger.debug("히스토리 압축 완료", extra={
+                "compacted_preview": compacted[:200]
+            })
         
         enhanced_query = self._build_contextual_query(compacted, message)
         if enhanced_query != message:
-            print(f"[DEBUG AgentExecutor] query enhanced: '{message[:50]}...' -> '{enhanced_query[:100]}...'")
+            logger.debug("쿼리 확장", extra={
+                "original_preview": message[:50],
+                "enhanced_preview": enhanced_query[:100]
+            })
 
         # 3. RAG 검색 (확장된 쿼리 사용)
-        print(f"[DEBUG AgentExecutor] calling _retrieve with query: {enhanced_query[:50]}...")
+        logger.debug("RAG 검색 시작", extra={"query_preview": enhanced_query[:50]})
         context = self._retrieve(
             query=enhanced_query,
             db_ids=self.chatbot_def.retrieval.db_ids,
         )
-        print(f"[DEBUG AgentExecutor] _retrieve returned context length: {len(context)}")
+        logger.debug("RAG 검색 완료", extra={"context_length": len(context)})
 
         # 2.5 Confidence 체크
         confidence = self._calculate_confidence(context, message)
-        print(f"[DEBUG AgentExecutor] confidence: {confidence}, context length: {len(context)}")
+        logger.debug("Confidence 계산 완료", extra={
+            "confidence": confidence,
+            "context_length": len(context)
+        })
         
         # DEBUG: 임시로 fallback 제거 (검색 테스트용)
         # 실제 운영 시에는 아래 로직 활성화 필요

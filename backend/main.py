@@ -18,18 +18,23 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+from backend.utils.logger import configure_logging, get_logger
+
+# 구조화된 로깅 설정
+configure_logging(level="INFO", json_format=True)
+logger = get_logger(__name__)
+
 from app import create_app, settings
 
 # FastAPI 앱 인스턴스 (기존 코드와 호환)
 app = create_app()
 
-
 # 직접 실행 시 (python backend/main.py)
 if __name__ == "__main__":
     import uvicorn
     
-    print(f"[Legacy] Starting via backend/main.py")
-    print(f"[Hint] Consider using 'python app.py' instead")
+    logger.info("[Legacy] Starting via backend/main.py")
+    logger.info("[Hint] Consider using 'python app.py' instead")
     
     uvicorn.run(
         app,

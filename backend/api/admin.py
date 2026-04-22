@@ -12,7 +12,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from backend.managers.chatbot_manager import ChatbotManager
 from backend.config import settings
 from backend.database.session import get_db_session
+from backend.utils.logger import get_logger
 from sqlalchemy.orm import Session
+
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["admin"])
 
@@ -71,9 +74,11 @@ async def get_current_user_info(request: Request) -> dict:
             "is_admin": True
         }
     
-    # 디버그: 세션 전체 출력
-    print(f"[DEBUG] Session keys: {list(request.session.keys())}")
-    print(f"[DEBUG] Session data: {dict(request.session)}")
+    # 디버그: 세션 정보 로깅
+    logger.debug("사용자 인증 정보 조회", extra={
+        "session_keys": list(request.session.keys()),
+        "session_data": dict(request.session)
+    })
     
     knox_id = None
     name = "Unknown"
@@ -81,31 +86,31 @@ async def get_current_user_info(request: Request) -> dict:
     # 방법 1: 직접 knox_id가 세션에 있는 경우
     if 'knox_id' in request.session:
         knox_id = request.session['knox_id']
-        print(f"[DEBUG] Found knox_id directly: {knox_id}")
+        logger.debug("세션에서 knox_id 발견", extra={"knox_id": knox_id})
     
     # 방법 2: sso 래퍼 안에 있는 경우
     elif 'sso' in request.session:
         sso_data = request.session['sso']
-        print(f"[DEBUG] SSO data: {sso_data}")
+        logger.debug("SSO 데이터 조회", extra={"sso_data": sso_data})
         if isinstance(sso_data, dict):
             possible_keys = ['knox_id', 'email', 'sub', 'preferred_username', 'username', 'user_id', 'id']
             for key in possible_keys:
                 if sso_data.get(key):
                     knox_id = sso_data.get(key)
-                    print(f"[DEBUG] Found ID from sso.{key}: {knox_id}")
+                    logger.debug("SSO에서 ID 발견", extra={"source_key": key, "knox_id": knox_id})
                     break
             name = sso_data.get('name') or sso_data.get('display_name') or sso_data.get('preferred_username') or knox_id
     
     # 방법 3: user 래퍼 안에 있는 경우
     elif 'user' in request.session:
         user_data = request.session['user']
-        print(f"[DEBUG] User data: {user_data}")
+        logger.debug("User 데이터 조회", extra={"user_data": user_data})
         if isinstance(user_data, dict):
             knox_id = user_data.get('knox_id') or user_data.get('id') or user_data.get('email')
             name = user_data.get('name') or knox_id
     
     if not knox_id:
-        print(f"[DEBUG] No knox_id found in session")
+        logger.warning("세션에서 knox_id를 찾을 수 없음")
         # 인증 실패 시에도 기본값 반환 (디버깅용)
         return {
             "knox_id": "unknown",
@@ -118,8 +123,11 @@ async def get_current_user_info(request: Request) -> dict:
         }
     
     is_admin = knox_id in settings.ADMIN_USER_IDS
-    print(f"[DEBUG] knox_id: {knox_id}, is_admin: {is_admin}")
-    print(f"[DEBUG] ADMIN_USER_IDS: {settings.ADMIN_USER_IDS}")
+    logger.debug("사용자 인증 완료", extra={
+        "knox_id": knox_id,
+        "is_admin": is_admin,
+        "admin_user_ids": settings.ADMIN_USER_IDS
+    })
     
     return {
         "knox_id": knox_id,
@@ -413,10 +421,10 @@ async def list_databases(
         resp.raise_for_status()
         data = resp.json()
         indices = data.get("indices", [])
-        print(f"[DEBUG] Ingestion indices loaded: {len(indices)} items")
+        logger.debug("Ingestion 인덱스 로드 완료", extra={"index_count": len(indices)})
         return sorted(indices)
     except Exception as e:
-        print(f"[WARNING] Ingestion indices 로드 실패: {e}")
+        logger.warning("Ingestion 인덱스 로드 실패", extra={"error": str(e)})
         # Fallback: 기존 방식으로
         chatbot_mgr = request.app.state.chatbot_manager
         all_defs = chatbot_mgr.list_all()

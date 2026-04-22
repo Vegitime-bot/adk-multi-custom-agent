@@ -87,5 +87,14 @@ class Settings:
     # Admin 권한을 가진 SSO 사용자 ID 목록 (콤마로 구분)
     ADMIN_USER_IDS: list[str] = [uid.strip() for uid in os.getenv("ADMIN_USER_IDS", "user-001").split(",") if uid.strip()]
 
+    # ── 위임(Delegation) 설정 ─────────────────────────────────────────
+    DEFAULT_DELEGATION_THRESHOLD: float = float(os.getenv("DEFAULT_DELEGATION_THRESHOLD", "70"))
+    MAX_DELEGATION_DEPTH: int = int(os.getenv("MAX_DELEGATION_DEPTH", "5"))
+    HYBRID_KEYWORD_WEIGHT: float = float(os.getenv("HYBRID_KEYWORD_WEIGHT", "0.4"))
+
+    # ── Circuit Breaker 설정 ──────────────────────────────────────────
+    CIRCUIT_BREAKER_FAILURE_THRESHOLD: int = int(os.getenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", "3"))
+    CIRCUIT_BREAKER_RECOVERY_TIMEOUT: float = float(os.getenv("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "30.0"))
+
 
 settings = Settings()

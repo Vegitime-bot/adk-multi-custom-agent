@@ -1,24 +1,135 @@
 from __future__ import annotations
 """
 executors/base_executor.py - Executor 기반 클래스
-공통 기능: RAG 검색, 메시지 구성, LLM 호출
+공통 기능: RAG 검색, 메시지 구성, LLM 호출, Circuit Breaker 통합
 """
 from abc import ABC, abstractmethod
-from typing import Generator
+from typing import Generator, Optional
 
 from backend.core.models import ChatbotDef
+from backend.core.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitBreakerState,
+    DelegationCircuitBreakerManager,
+)
 from backend.llm.client import build_messages, stream_chat
 from backend.retrieval.ingestion_client import IngestionClient, format_context
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+# 기본 Circuit Breaker 설정
+DEFAULT_CB_CONFIG = CircuitBreakerConfig(
+    failure_threshold=3,      # 실패 3회 연속 시 OPEN
+    recovery_timeout=30.0,   # 30초 후 HALF_OPEN으로 복구 시도
+    half_open_max_calls=1,   # HALF_OPEN에서 1회 호출 허용
+    success_threshold=1,     # 1회 성공 시 CLOSED로 복구
+)
 
 
 class BaseExecutor(ABC):
-    """Executor 기반 클래스 - 공통 실행 기능 제공"""
+    """Executor 기반 클래스 - 공통 실행 기능 및 Circuit Breaker 제공"""
 
     def __init__(self, chatbot_def: ChatbotDef, ingestion_client: IngestionClient):
         self.chatbot_def = chatbot_def
         self.ingestion = ingestion_client
+        
+        # Circuit Breaker 초기화
+        self._cb_manager: Optional[DelegationCircuitBreakerManager] = None
+        self._init_circuit_breaker()
 
-    def _calculate_confidence(self, context: str, message: str) -> int:
+    def _init_circuit_breaker(self) -> None:
+        """Circuit Breaker 초기화"""
+        self._cb_manager = DelegationCircuitBreakerManager(config=DEFAULT_CB_CONFIG)
+
+    def _get_circuit_breaker(self, target_id: str) -> CircuitBreaker:
+        """특정 대상에 대한 Circuit Breaker 가져오기"""
+        if self._cb_manager is None:
+            self._init_circuit_breaker()
+        return self._cb_manager.get_breaker(target_id)
+
+    def _protected_call(
+        self,
+        target_id: str,
+        func: callable,
+        fallback: callable = None,
+        fallback_message: str = None
+    ):
+        """
+        Circuit Breaker로 보호된 함수 호출
+        
+        Args:
+            target_id: 대상 식별자 (Agent ID 등)
+            func: 실행할 함수
+            fallback: 실패 시 대체 함수
+            fallback_message: 사용자 친화적인 fallback 메시지
+        """
+        cb = self._get_circuit_breaker(target_id)
+        
+        def _fallback_wrapper():
+            if fallback:
+                return fallback()
+            if fallback_message:
+                return fallback_message
+            return f"⚠️ '{target_id}' 서비스를 일시적으로 이용할 수 없습니다. 잠시 후 다시 시도해 주세요."
+        
+        return cb.call(func, _fallback_wrapper)
+
+    def get_circuit_breaker_stats(self, target_id: str = None) -> dict:
+        """
+        Circuit Breaker 통계 조회
+        
+        Args:
+            target_id: 특정 대상 ID (None이면 전체 통계)
+        """
+        if self._cb_manager is None:
+            return {}
+        
+        if target_id:
+            stats = self._cb_manager.get_stats(target_id)
+            if stats:
+                return {
+                    'state': stats.state.value,
+                    'failure_count': stats.failure_count,
+                    'success_count': stats.success_count,
+                    'total_calls': stats.total_calls,
+                    'total_failures': stats.total_failures,
+                    'total_successes': stats.total_successes,
+                    'total_rejections': stats.total_rejections,
+                }
+            return {}
+        
+        return {
+            agent_id: {
+                'state': s.state.value,
+                'failure_count': s.failure_count,
+                'success_count': s.success_count,
+                'total_calls': s.total_calls,
+                'total_failures': s.total_failures,
+                'total_successes': s.total_successes,
+                'total_rejections': s.total_rejections,
+            }
+            for agent_id, s in self._cb_manager.get_all_stats().items()
+        }
+
+    def reset_circuit_breaker(self, target_id: str = None) -> None:
+        """
+        Circuit Breaker 리셋
+        
+        Args:
+            target_id: 특정 대상 ID (None이면 전체 리셋)
+        """
+        if self._cb_manager is None:
+            return
+        
+        if target_id:
+            cb = self._cb_manager.get_breaker(target_id)
+            cb.reset()
+        else:
+            self._cb_manager.reset_all()
+
         """
         검색 결과 기반 Confidence 계산 (개선된 버전)
         
@@ -67,10 +178,14 @@ class BaseExecutor(ABC):
     def _retrieve(self, query: str, db_ids: list[str]) -> str:
         """RAG 검색 - 공통 기능"""
         import json
-        print(f"[DEBUG] _retrieve called - query: {query[:50]}..., db_ids: {db_ids}")
-        print(f"[DEBUG] chatbot: {self.chatbot_def.id}, retrieval.k: {self.chatbot_def.retrieval.k}")
+        logger.debug("RAG 검색 시작", extra={
+            "query_preview": query[:50],
+            "db_ids": db_ids,
+            "chatbot_id": self.chatbot_def.id,
+            "retrieval_k": self.chatbot_def.retrieval.k
+        })
         if not db_ids:
-            print(f"[DEBUG] db_ids is empty, returning empty context")
+            logger.debug("db_ids가 비어있어 빈 컨텍스트 반환")
             return ""
         results = self.ingestion.search(
             db_ids=db_ids,
@@ -78,13 +193,15 @@ class BaseExecutor(ABC):
             k=self.chatbot_def.retrieval.k,
             filter_metadata=self.chatbot_def.retrieval.filter_metadata,
         )
-        print(f"[DEBUG] ingestion.search returned {len(results)} results")
+        logger.debug("Ingestion 검색 완료", extra={"result_count": len(results)})
         if results:
-            print(f"[DEBUG] first result: {json.dumps(results[0], ensure_ascii=False, default=str)[:200]}...")
+            logger.debug("첫 번째 결과 미리보기", extra={
+                "first_result_preview": json.dumps(results[0], ensure_ascii=False, default=str)[:200]
+            })
         else:
-            print(f"[DEBUG] no results found for db_ids: {db_ids}")
+            logger.debug("검색 결과 없음", extra={"db_ids": db_ids})
         context = format_context(results)
-        print(f"[DEBUG] formatted context length: {len(context)}")
+        logger.debug("컨텍스트 포맷팅 완료", extra={"context_length": len(context)})
         return context
 
     def _build_messages(

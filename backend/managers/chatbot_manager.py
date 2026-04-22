@@ -15,6 +15,9 @@ from typing import Optional
 
 from backend.core.models import ChatbotDef
 from backend.config import settings
+from backend.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class ChatbotManager:
@@ -35,7 +38,7 @@ class ChatbotManager:
                 chatbot = ChatbotDef.from_dict(data)
                 self._chatbots[chatbot.id] = chatbot
             except Exception as e:
-                print(f"[ChatbotManager] {json_file.name} 로드 실패: {e}")
+                logger.warning(f"{json_file.name} 로드 실패", extra={"file": json_file.name, "error": str(e)})
         
         # 로드 후 계층 정보 검증 및 보정
         self._validate_and_fix_hierarchy()
@@ -110,7 +113,7 @@ class ChatbotManager:
         while current_id and iteration < max_iterations:
             if current_id in visited:
                 # 순환 참조 발견 - 중단
-                print(f"[ChatbotManager] 순환 참조 감지: {chatbot_id}")
+                logger.warning("순환 참조 감지", extra={"chatbot_id": chatbot_id, "cycle_at": current_id})
                 break
             
             visited.add(current_id)
@@ -297,14 +300,18 @@ class ChatbotManager:
         for chatbot in self._chatbots.values():
             # 1. 부모가 없는데 level > 0인 경우 (orphan) -> level 0으로 보정
             if chatbot.parent_id is None and chatbot.level > 0:
-                print(f"[ChatbotManager] Warning: '{chatbot.id}'는 부모가 없지만 level={chatbot.level}. "
-                      f"level을 0으로 보정합니다.")
+                logger.warning(
+                    f"'{chatbot.id}'는 부모가 없지만 level={chatbot.level}. level을 0으로 보정합니다.",
+                    extra={"chatbot_id": chatbot.id, "old_level": chatbot.level, "new_level": 0}
+                )
                 chatbot.level = 0
             
             # 2. 부모가 존재하지 않는 경우 (orphan parent_id)
             if chatbot.parent_id and chatbot.parent_id not in self._chatbots:
-                print(f"[ChatbotManager] Warning: '{chatbot.id}'의 부모 '{chatbot.parent_id}'가 존재하지 않습니다. "
-                      f"parent_id를 None으로 보정합니다.")
+                logger.warning(
+                    f"'{chatbot.id}'의 부모 '{chatbot.parent_id}'가 존재하지 않습니다. parent_id를 None으로 보정합니다.",
+                    extra={"chatbot_id": chatbot.id, "orphan_parent_id": chatbot.parent_id}
+                )
                 chatbot.parent_id = None
                 chatbot.level = 0
             
@@ -313,9 +320,10 @@ class ChatbotManager:
                 parent = self._chatbots[chatbot.parent_id]
                 expected_level = parent.level + 1
                 if chatbot.level != expected_level:
-                    print(f"[ChatbotManager] Warning: '{chatbot.id}'의 level={chatbot.level}이 "
-                          f"부모 '{parent.id}'의 level={parent.level}와 일치하지 않습니다. "
-                          f"level을 {expected_level}로 보정합니다.")
+                    logger.warning(
+                        f"'{chatbot.id}'의 level={chatbot.level}이 부모 '{parent.id}'의 level={parent.level}와 일치하지 않습니다. level을 {expected_level}로 보정합니다.",
+                        extra={"chatbot_id": chatbot.id, "old_level": chatbot.level, "new_level": expected_level, "parent_id": parent.id}
+                    )
                     chatbot.level = expected_level
 
     # ──────────────────────────────────────────────────────────────

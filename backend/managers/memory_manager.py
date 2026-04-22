@@ -1,53 +1,53 @@
-from __future__ import annotations
 """
-managers/memory_manager.py - 대화 메모리 관리 (ADK 마이그레이션 완료)
+managers/memory_manager.py - 대화 메모리 관리 (Storage Backend 추상화 적용)
 
-ADK Memory를 사용하여 대화 기록을 관리합니다.
-USE_ADK=false 시 기존 인메모리 구현으로 fallback.
+StorageBackend 추상화를 사용하여 ADK/인메모리 듀얼 모드를 관리합니다.
+USE_ADK 환경변수에 따라 자동으로 구현체가 선택됩니다.
 """
+
+from __future__ import annotations
+
+import logging
 from typing import Optional
 
 from backend.core.models import Message
+from backend.core.storage_backend import (
+    MemoryStorageBackend,
+    StorageBackendFactory,
+)
 
-# ADK Memory 래퍼 import
-try:
-    from backend.adk.adk_memory_wrapper import ADKMemoryWrapper, USE_ADK
-    ADK_AVAILABLE = True
-except ImportError:
-    ADK_AVAILABLE = False
-    USE_ADK = False
+logger = logging.getLogger(__name__)
 
 
 class MemoryManager:
-    def __init__(self):
-        self._use_adk = USE_ADK and ADK_AVAILABLE
-        self._adk_wrapper: Optional[ADKMemoryWrapper] = None
-        self._store: dict[tuple[str, str], list[Message]] = {}  # Fallback용
+    """
+    대화 메모리 관리자.
+    
+    StorageBackend 추상화를 통해 ADK/인메모리 구현을 투명하게 처리합니다.
+    """
+    
+    def __init__(self, backend: Optional[MemoryStorageBackend] = None):
+        """
+        MemoryManager를 초기화합니다.
         
-        if self._use_adk:
-            try:
-                self._adk_wrapper = ADKMemoryWrapper()
-            except Exception:
-                self._use_adk = False
-
-    def _key(self, chatbot_id: str, session_id: str) -> tuple[str, str]:
-        return (chatbot_id, session_id)
-
+        Args:
+            backend: 사용할 MemoryStorageBackend (None이면 Factory에서 자동 생성)
+        """
+        if backend is None:
+            self._backend = StorageBackendFactory.create_memory_backend()
+        else:
+            self._backend = backend
+        
+        logger.info(f"[MemoryManager] Initialized with {type(self._backend).__name__}")
+    
     def get_history(self, chatbot_id: str, session_id: str) -> list[Message]:
-        if self._use_adk and self._adk_wrapper:
-            return self._adk_wrapper.get_history(chatbot_id, session_id)
-        return list(self._store.get(self._key(chatbot_id, session_id), []))
-
+        """지정된 챗봇/세션의 대화 기록을 반환합니다."""
+        return self._backend.get_history(chatbot_id, session_id)
+    
     def append(self, chatbot_id: str, session_id: str, message: Message) -> None:
-        if self._use_adk and self._adk_wrapper:
-            self._adk_wrapper.append(chatbot_id, session_id, message)
-            return
-            
-        key = self._key(chatbot_id, session_id)
-        if key not in self._store:
-            self._store[key] = []
-        self._store[key].append(message)
-
+        """단일 메시지를 저장합니다."""
+        self._backend.append(chatbot_id, session_id, message)
+    
     def append_pair(
         self,
         chatbot_id: str,
@@ -56,47 +56,30 @@ class MemoryManager:
         assistant_content: str,
         max_messages: int = 20,
     ) -> None:
-        """사용자 메시지와 어시스턴트 메시지를 함께 저장하고 길이를 제한한다."""
-        if self._use_adk and self._adk_wrapper:
-            self._adk_wrapper.append_pair(
-                chatbot_id, session_id,
-                user_content, assistant_content,
-                max_messages=max_messages
-            )
-            return
-        
-        # Fallback: 기존 인메모리 구현
-        key = self._key(chatbot_id, session_id)
-        if key not in self._store:
-            self._store[key] = []
-        self._store[key].append(Message(role="user", content=user_content))
-        self._store[key].append(Message(role="assistant", content=assistant_content))
-        
-        # 최대 메시지 수 유지
-        if max_messages > 0 and len(self._store[key]) > max_messages:
-            excess = len(self._store[key]) - max_messages
-            if excess % 2 != 0:
-                excess += 1
-            self._store[key] = self._store[key][excess:]
-
+        """
+        사용자 메시지와 어시스턴트 메시지를 함께 저장하고 길이를 제한합니다.
+        """
+        self._backend.append_pair(
+            chatbot_id=chatbot_id,
+            session_id=session_id,
+            user_content=user_content,
+            assistant_content=assistant_content,
+            max_messages=max_messages,
+        )
+    
     def clear(self, chatbot_id: str, session_id: str) -> None:
-        if self._use_adk and self._adk_wrapper:
-            self._adk_wrapper.clear(chatbot_id, session_id)
-            return
-        self._store.pop(self._key(chatbot_id, session_id), None)
-
+        """지정된 챗봇/세션의 대화 기록을 삭제합니다."""
+        self._backend.clear(chatbot_id, session_id)
+    
     def clear_all_for_session(self, session_id: str) -> None:
-        """특정 세션에 속한 모든 챗봇 메모리를 삭제한다."""
-        if self._use_adk and self._adk_wrapper:
-            self._adk_wrapper.clear_all_for_session(session_id)
-            return
-            
-        keys_to_remove = [k for k in self._store if k[1] == session_id]
-        for k in keys_to_remove:
-            del self._store[k]
-
+        """특정 세션에 속한 모든 챗봇 메모리를 삭제합니다."""
+        self._backend.clear_all_for_session(session_id)
+    
     def get_all_keys(self) -> list[tuple[str, str]]:
-        """디버그용: 저장된 모든 키 반환"""
-        if self._use_adk and self._adk_wrapper:
-            return self._adk_wrapper.get_all_keys()
-        return list(self._store.keys())
+        """디버깅용: 저장된 모든 키를 반환합니다."""
+        return self._backend.get_all_keys()
+    
+    def shutdown(self) -> None:
+        """MemoryManager를 종료하고 리소스를 정리합니다."""
+        self._backend.shutdown()
+        logger.info("[MemoryManager] Shutdown")

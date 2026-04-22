@@ -14,17 +14,18 @@ import base64
 import json
 import logging
 
-# 전역 로깅 레벨 설정 (DEBUG)
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(asctime)s] [%(levelname)s] %(name)s: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-# 기본 로거 레벨 설정
-for handler in logging.getLogger().handlers:
-    handler.setLevel(logging.DEBUG)
-
 from config import settings
+from backend.utils.logger import configure_logging, get_logger
+from backend.utils.metrics import PrometheusMiddleware, setup_metrics
+
+# 구조화된 로깅 설정 (settings import 후에 설정)
+configure_logging(
+    level=settings.DEBUG and "DEBUG" or "INFO",
+    json_format=True
+)
+
+logger = get_logger(__name__)
+
 from backend.api.admin import router as admin_router
 from backend.api.chat import router as chat_router
 from backend.api.health import router as health_router
@@ -55,17 +56,21 @@ async def lifespan(app: FastAPI):
         try:
             from backend.database.session import init_tables
             init_tables()
-            print("[Startup] PostgreSQL 테이블 초기화 완료")
+            logger.info("PostgreSQL 테이블 초기화 완료")
         except Exception as e:
-            print(f"[Startup] PostgreSQL 초기화 오류: {e}")
+            logger.error("PostgreSQL 초기화 오류", extra={"error": str(e)})
     
-    print(f"[Startup] USE_MOCK_DB={settings.USE_MOCK_DB}, USE_MOCK_AUTH={settings.USE_MOCK_AUTH}")
-    print(f"[Startup] 챗봇 {len(app.state.chatbot_manager.list_all())}개 로드됨")
+    chatbot_count = len(app.state.chatbot_manager.list_all())
+    logger.info("애플리케이션 시작 완료", extra={
+        "use_mock_db": settings.USE_MOCK_DB,
+        "use_mock_auth": settings.USE_MOCK_AUTH,
+        "chatbot_count": chatbot_count
+    })
     
     yield
     
     # Shutdown
-    print("[Shutdown] 서버 종료 중...")
+    logger.info("서버 종료 중...")
 
 
 # ── FastAPI 앱 생성 ────────────────────────────────────────────────
@@ -90,11 +95,17 @@ def create_app() -> FastAPI:
         https_only=False,  # 개발 환경용 (프로덕션에서는 True)
     )
 
+    # ── Prometheus 메트릭스 미들웨어 ───────────────────────────────
+    app.add_middleware(PrometheusMiddleware)
+    
+    # ── Prometheus 메트릭스 엔드포인트 설정 ──────────────────────────
+    setup_metrics(app, metrics_path="/metrics")
+
     # ── SSO 인증 (Mock Auth 아닐 때만) ────────────────────────────
     # NOTE: SSO는 사내 환경에서 별도 구현 필요
     # 현재는 Mock Auth만 사용 (USE_MOCK_AUTH=true 권장)
     if not settings.USE_MOCK_AUTH:
-        print("[Startup] WARNING: SSO not implemented in ADK version. Use USE_MOCK_AUTH=true")
+        logger.warning("SSO not implemented in ADK version. Use USE_MOCK_AUTH=true")
     
     # ── 루트 경로 /main으로 리다이렉트 ──────────────────────────
     @app.get("/")
@@ -136,8 +147,7 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
     
-    print(f"[Server] Starting on {settings.HOST}:{settings.PORT}")
-    print(f"[Server] DEBUG={settings.DEBUG}")
+    logger.info("서버 시작", extra={"host": settings.HOST, "port": settings.PORT, "debug": settings.DEBUG})
     
     uvicorn.run(
         app,
