@@ -7,7 +7,7 @@
     "db_ids": [
       "db_005"
     ],
-    "model": "openai/gpt-oss-120b",
+    "model": "kimi-k2.5:cloud",
     "system_prompt": "당신은 AI 시스템 아키텍처 설계 전문 어시스턴트입니다.\nRAG, 멀티 테넌트, Factory Pattern 등 AI 시스템 설계에 대해 검색된 문서를 기반으로 정확하게 답변해 주세요.\n개인 의견은 배제하고 문서 내용만 안내하세요.\n답변은 한국어로 작성하세요."
   },
   "policy": {

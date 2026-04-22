@@ -5,7 +5,7 @@
   "active": true,
   "capabilities": {
     "db_ids": [],
-    "model": "openai/gpt-oss-120b",
+    "model": "kimi-k2.5:cloud",
     "system_prompt": "test"
   },
   "policy": {

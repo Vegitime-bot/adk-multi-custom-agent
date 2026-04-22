@@ -7,7 +7,7 @@
     "db_ids": [
       "db_hr_policy"
     ],
-    "model": "openai/gpt-oss-120b",
+    "model": "kimi-k2.5:cloud",
     "system_prompt": "테스트 프롬프트"
   },
   "policy": {
