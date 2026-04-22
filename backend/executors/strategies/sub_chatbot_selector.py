@@ -186,12 +186,16 @@ class HybridSelector(SubChatbotSelector):
         message_lower = message.lower()
         scores = []
 
+        logger.info(f"[Selector] Evaluating {len(candidates)} candidates for: '{message[:50]}...'")
+        
         for sub_def in candidates:
             try:
                 kw_score = self._keyword_score(sub_def, message_lower)
                 emb_score = self._embedding_score(message, sub_def, embedding_service)
                 hybrid = self.keyword_weight * kw_score + self.embedding_weight * emb_score
 
+                logger.info(f"[Selector] {sub_def.id}: keyword={kw_score:.3f}, embedding={emb_score:.3f}, hybrid={hybrid:.3f}")
+                
                 scores.append({
                     'chatbot': sub_def,
                     'keyword': round(kw_score, 3),
@@ -207,6 +211,10 @@ class HybridSelector(SubChatbotSelector):
 
         # 임계값 필터링
         filtered = [s for s in scores if s['hybrid'] >= self.threshold]
+        
+        logger.info(f"[Selector] After threshold filter (>= {self.threshold}): {len(filtered)} candidates")
+        for s in filtered:
+            logger.info(f"[Selector]  → {s['chatbot'].id}: hybrid={s['hybrid']}")
 
         # Fail-safe: 임계값 통과 없으면 키워드 점수 기준으로 최소 1개 선택
         if not filtered:
@@ -218,7 +226,7 @@ class HybridSelector(SubChatbotSelector):
                 filtered = scores[:1]
 
         # 결과 구성
-        return [
+        selected = [
             (
                 s['chatbot'],
                 f"(kw:{s['keyword']}, emb:{s['embedding']}, hybrid:{s['hybrid']})",
@@ -226,6 +234,10 @@ class HybridSelector(SubChatbotSelector):
             )
             for s in filtered[:max_results]
         ]
+        
+        logger.info(f"[Selector] Selected {len(selected)} chatbots (max_results={max_results}): {[s[0].id for s in selected]}")
+        
+        return selected
 
     def _keyword_score(self, sub_def: ChatbotDef, message_lower: str) -> float:
         """키워드 매칭 점수 (0-1 정규화)"""
