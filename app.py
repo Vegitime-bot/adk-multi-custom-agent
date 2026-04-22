@@ -96,13 +96,26 @@ def create_app() -> FastAPI:
     if not settings.USE_MOCK_AUTH:
         print("[Startup] WARNING: SSO not implemented in ADK version. Use USE_MOCK_AUTH=true")
     
-    # Mock Auth: 챗봇 UI를 루트에 표시
-        @app.get("/", response_class=HTMLResponse)
-        def index():
-            html_file = STATIC_DIR / "index.html"
-            if html_file.exists():
-                return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
-            return HTMLResponse(content="<h1>Multi Custom Agent Service</h1><p>static/index.html 없음</p>")
+    # ── Mock Auth: 챗봇 UI를 루트에 표시 ──────────────────────
+    @app.get("/", response_class=HTMLResponse)
+    def index():
+        html_file = STATIC_DIR / "index.html"
+        if html_file.exists():
+            return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
+        return HTMLResponse(content="<h1>Multi Custom Agent Service</h1><p>static/index.html 없음</p>")
+
+    # ── 챗봇 상세 페이지 (chatbot 파라미터 지원) ─────────────────
+    @app.get("/detail", response_class=HTMLResponse)
+    def detail_page(chatbot: str = None):
+        """챗봇 상세 페이지 - chatbot 파라미터로 ID 전달"""
+        html_file = STATIC_DIR / "detail.html"
+        if html_file.exists():
+            return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
+        # detail.html이 없으면 index.html 반환 (SPA 방식)
+        html_file = STATIC_DIR / "index.html"
+        if html_file.exists():
+            return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
+        return HTMLResponse(content=f"<h1>Chatbot Detail</h1><p>ID: {chatbot}</p><p>static/detail.html 없음</p>")
 
     # ── 라우터 등록 ───────────────────────────────────────────────
     app.include_router(health_router)

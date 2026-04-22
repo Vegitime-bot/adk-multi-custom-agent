@@ -457,6 +457,24 @@
   // ── 초기화 ───────────────────────────────────────────────────────
   loadChatbots();
 
+  // URL 파라미터로 챗봇 ID가 전달된 경우 자동 선택
+  const urlParams = new URLSearchParams(window.location.search);
+  const chatbotFromUrl = urlParams.get('chatbot');
+  if (chatbotFromUrl) {
+    // 챗봇 목록 로드 후 선택
+    const checkAndSelect = setInterval(() => {
+      if (selector.options.length > 0) {
+        clearInterval(checkAndSelect);
+        selector.value = chatbotFromUrl;
+        if (selector.value === chatbotFromUrl) {
+          selector.dispatchEvent(new Event('change'));
+        }
+      }
+    }, 100);
+    // 5초 후에도 로드되지 않으면 중단
+    setTimeout(() => clearInterval(checkAndSelect), 5000);
+  }
+
   sendBtn.addEventListener('click', sendMessage);
   userInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
