@@ -91,7 +91,7 @@ class HybridSelector(SubChatbotSelector):
     DEFAULT_KEYWORD_WEIGHT = None  # config에서 동적 로드
     DEFAULT_EMBEDDING_WEIGHT = None  # config에서 동적 로드
     DEFAULT_THRESHOLD = 0.15
-    DEFAULT_KEYWORD_THRESHOLD = 0.3
+    DEFAULT_KEYWORD_THRESHOLD = 0.1
 
     # 레거시 키워드 매핑 (하위 호환)
     KEYWORDS_MAP = {

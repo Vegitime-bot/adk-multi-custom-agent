@@ -23,7 +23,8 @@
     "default_mode": "agent",
     "max_messages": 20,
     "delegation_threshold": 70,
-    "hybrid_score_threshold": 0.15
+    "hybrid_score_threshold": 0.15,
+    "keywords": ["기술", "tech", "개발", "백엔드", "backend", "프론트엔드", "frontend", "devops", "docker", "kubernetes", "RTL", "verilog", "FPGA", "반도체", "API", "DB", "데이터베이스"]
   },
   "sub_chatbots": [
     {
