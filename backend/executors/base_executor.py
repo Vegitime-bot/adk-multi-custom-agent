@@ -130,6 +130,7 @@ class BaseExecutor(ABC):
         else:
             self._cb_manager.reset_all()
 
+    def _calculate_confidence(self, context: str, message: str) -> int:
         """
         검색 결과 기반 Confidence 계산 (개선된 버전)
         
