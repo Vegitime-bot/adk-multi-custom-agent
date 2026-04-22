@@ -136,12 +136,18 @@ class ADKSessionStorage(SessionStorageBackend):
         
         # ADK 세션 생성
         state = self._chat_to_adk_state(session)
-        adk_session = self._session_service.create_session(
-            app_name="multi_custom_agent",
-            user_id=user_knox_id,
-            session_id=sid,
-            state=state,
-        )
+        try:
+            adk_session = self._session_service.create_session(
+                app_name="multi_custom_agent",
+                user_id=user_knox_id,
+                session_id=sid,
+                state=state,
+            )
+        except Exception as e:
+            logger.warning(f"[ADKSessionStorage] ADK create_session failed: {e}")
+            # 로컬 캐시에만 저장하고 반환
+            self._local_cache[sid] = session
+            return session
         
         # 로컬 캐시에 저장
         chat_session = self._adk_to_chat_session(adk_session)
