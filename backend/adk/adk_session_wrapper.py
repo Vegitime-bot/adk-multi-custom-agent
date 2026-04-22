@@ -413,6 +413,50 @@ class ADKSessionWrapper:
         
         return session
     
+    def find_recent_session(self, user_knox_id: str, chatbot_id: str) -> Optional[ChatSession]:
+        """
+        동일 user + chatbot의 가장 최근 세션 찾기.
+        
+        Args:
+            user_knox_id: 사용자 Knox ID
+            chatbot_id: 챗봇 ID
+            
+        Returns:
+            가장 최근 ChatSession 또는 None
+        """
+        if USE_ADK and ADK_AVAILABLE and self._session_service:
+            try:
+                # ADK에서 세션 목록 조회
+                all_sessions = self._session_service.list_sessions(
+                    app_name="multi_custom_agent",
+                    user_id=user_knox_id,
+                )
+                
+                # chatbot_id가 일치하는 세션 찾기
+                matching = []
+                for s in all_sessions:
+                    if s.state and s.state.get("chatbot_id") == chatbot_id:
+                        matching.append(s)
+                
+                if matching:
+                    # 생성 시간 기준으로 정렬하여 가장 최근 것 반환
+                    # ADK Session에는 create_time 속성이 있음
+                    matching.sort(key=lambda s: getattr(s, 'create_time', ''), reverse=True)
+                    return self._adk_to_chat_session(matching[0])
+                    
+            except Exception as e:
+                logger.warning(f"[ADKSessionWrapper] find_recent_session error: {e}")
+                pass
+        
+        # Fallback: 로컬 세션에서 검색
+        matching = [
+            s for s in self._local_sessions.values()
+            if s.user_knox_id == user_knox_id and s.chatbot_id == chatbot_id
+        ]
+        if matching:
+            return matching[-1]
+        return None
+
     def list_sessions(self, user_knox_id: Optional[str] = None) -> list[dict]:
         """
         세션 목록 조회 (SessionManager 인터페이스 호환).
