@@ -25,7 +25,8 @@
     "multi_sub_execution": true,
     "max_parallel_subs": 2,
     "synthesis_mode": "parallel",
-    "hybrid_score_threshold": 0.15
+    "hybrid_score_threshold": 0.15,
+    "keywords": ["인사", "hr", "인사팀", "사내", "회사", "정책", "규정", "복리후생", "급여"]
   },
   "sub_chatbots": [
     {

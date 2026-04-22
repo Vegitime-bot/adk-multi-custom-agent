@@ -21,7 +21,8 @@
     ],
     "default_mode": "agent",
     "max_messages": 20,
-    "enable_parent_delegation": true
+    "enable_parent_delegation": true,
+    "keywords": ["정책", "규정", "평가", "채용", "승진", "인사제도", "징계", "인사"]
   },
   "sub_chatbots": [],
   "parent_id": "chatbot-hr",

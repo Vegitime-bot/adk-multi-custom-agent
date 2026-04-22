@@ -21,7 +21,8 @@
     ],
     "default_mode": "agent",
     "max_messages": 20,
-    "enable_parent_delegation": true
+    "enable_parent_delegation": true,
+    "keywords": ["급여", "연차", "휴가", "복지", "보험", "경조사", "교육지원", "수당", "상여", "복리후생", "의료비"]
   },
   "sub_chatbots": [],
   "parent_id": "chatbot-hr",
