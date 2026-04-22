@@ -3,87 +3,211 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADK Agent Chat - DB Mode</title>
+    <title>ADK Agent Chat - Phase 2</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* ==========================================
+           CSS Variables - Light/Dark Mode
+           ========================================== */
+        :root {
+            /* Light Mode */
+            --bg-primary: #f0f2f5;
+            --bg-secondary: #ffffff;
+            --bg-sidebar: #1a1a2e;
+            --bg-sidebar-footer: #16162a;
+            --bg-hover: #2d2d44;
+            --bg-active: #667eea;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --text-muted: #999999;
+            --text-light: #ffffff;
+            --border-color: #e9ecef;
+            --border-sidebar: #2d2d44;
+            --accent-color: #667eea;
+            --accent-hover: #5a67d8;
+            --accent-light: #e3f2fd;
+            --error-bg: #ffebee;
+            --error-color: #c62828;
+            --success-bg: #e8f5e9;
+            --success-color: #2e7d32;
+            --warning-bg: #fff3e0;
+            --warning-color: #f57c00;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 20px;
+            --transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --bg-sidebar: #0d0d16;
+            --bg-sidebar-footer: #0a0a12;
+            --bg-hover: #2d2d44;
+            --bg-active: #667eea;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --text-light: #ffffff;
+            --border-color: #2d2d44;
+            --border-sidebar: #3d3d5c;
+            --accent-light: rgba(102, 126, 234, 0.2);
+            --error-bg: rgba(198, 40, 40, 0.2);
+            --success-bg: rgba(46, 125, 50, 0.2);
+            --warning-bg: rgba(245, 124, 0, 0.2);
+        }
+
+        /* ==========================================
+           Base Styles
+           ========================================== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             height: 100vh;
             overflow: hidden;
+            transition: var(--transition);
         }
-        
+
+        /* ==========================================
+           App Container
+           ========================================== */
         .app-container {
             display: flex;
             height: 100vh;
         }
-        
-        /* 사이드바 */
+
+        /* ==========================================
+           Sidebar
+           ========================================== */
         .sidebar {
-            width: 280px;
-            background: #1a1a2e;
-            color: white;
+            width: 300px;
+            background: var(--bg-sidebar);
+            color: var(--text-light);
             display: flex;
             flex-direction: column;
-            border-right: 1px solid #2d2d44;
+            border-right: 1px solid var(--border-sidebar);
+            transition: transform 0.3s ease;
         }
-        
+
         .sidebar-header {
             padding: 20px;
-            border-bottom: 1px solid #2d2d44;
+            border-bottom: 1px solid var(--border-sidebar);
         }
-        
+
         .sidebar-header h1 {
             font-size: 18px;
             font-weight: 600;
             margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        
+
+        .sidebar-search {
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .sidebar-search input {
+            width: 100%;
+            padding: 10px 12px 10px 36px;
+            background: var(--bg-hover);
+            border: 1px solid var(--border-sidebar);
+            border-radius: var(--radius-md);
+            color: var(--text-light);
+            font-size: 13px;
+            transition: var(--transition);
+        }
+
+        .sidebar-search input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .sidebar-search i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
         .new-chat-btn {
             width: 100%;
             padding: 12px;
-            background: #667eea;
+            background: var(--accent-color);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             cursor: pointer;
             font-size: 14px;
             font-weight: 500;
-            transition: background 0.2s;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
-        
+
         .new-chat-btn:hover {
-            background: #5a67d8;
+            background: var(--accent-hover);
         }
-        
+
         .sessions-list {
             flex: 1;
             overflow-y: auto;
             padding: 10px;
         }
-        
+
         .session-item {
             padding: 12px;
-            margin-bottom: 4px;
-            border-radius: 8px;
+            margin-bottom: 6px;
+            border-radius: var(--radius-md);
             cursor: pointer;
-            transition: background 0.2s;
+            transition: var(--transition);
             position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        
+
         .session-item:hover {
-            background: #2d2d44;
+            background: var(--bg-hover);
         }
-        
+
         .session-item.active {
-            background: #667eea;
+            background: var(--accent-color);
         }
-        
+
+        .session-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .session-info {
+            flex: 1;
+            min-width: 0;
+        }
+
         .session-name {
             font-size: 14px;
             font-weight: 500;
@@ -91,86 +215,184 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        
+
         .session-meta {
             font-size: 11px;
             opacity: 0.7;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
-        
-        .session-delete-btn {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: rgba(255,255,255,0.5);
-            cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
+
+        .session-actions {
+            display: flex;
+            gap: 4px;
             opacity: 0;
             transition: opacity 0.2s;
         }
-        
-        .session-item:hover .session-delete-btn {
+
+        .session-item:hover .session-actions {
             opacity: 1;
         }
-        
-        .session-delete-btn:hover {
+
+        .session-action-btn {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: var(--transition);
+            font-size: 12px;
+        }
+
+        .session-action-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .session-action-btn.delete:hover {
+            background: rgba(255,107,107,0.2);
             color: #ff6b6b;
         }
-        
+
+        .unread-badge {
+            background: #ff6b6b;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
         .sidebar-footer {
             padding: 15px;
-            border-top: 1px solid #2d2d44;
-            background: #16162a;
+            border-top: 1px solid var(--border-sidebar);
+            background: var(--bg-sidebar-footer);
         }
-        
+
         .user-info {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            align-items: center;
+            gap: 10px;
             margin-bottom: 10px;
         }
-        
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
         .user-name {
             font-size: 13px;
             font-weight: 500;
             color: white;
         }
-        
+
         .user-role {
             font-size: 11px;
-            color: #888;
+            color: var(--text-muted);
         }
-        
-        .admin-link {
-            display: block;
+
+        .footer-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .footer-btn {
+            flex: 1;
             padding: 8px 12px;
-            background: #667eea;
+            background: var(--bg-hover);
             color: white;
-            text-decoration: none;
-            border-radius: 6px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
             font-size: 12px;
             text-align: center;
-            transition: background 0.2s;
+            text-decoration: none;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
-        
-        .admin-link:hover {
-            background: #5a67d8;
+
+        .footer-btn:hover {
+            background: var(--bg-active);
         }
-        
-        /* 메인 영역 */
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Mobile Sidebar Toggle */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            font-size: 18px;
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        /* ==========================================
+           Main Content
+           ========================================== */
         .main-content {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background: white;
+            background: var(--bg-secondary);
+            transition: var(--transition);
         }
-        
+
+        /* ==========================================
+           Welcome Screen
+           ========================================== */
         .welcome-screen {
             flex: 1;
             display: flex;
@@ -180,334 +402,1211 @@
             padding: 40px;
             text-align: center;
         }
-        
+
         .welcome-screen h2 {
-            font-size: 28px;
-            color: #333;
-            margin-bottom: 20px;
+            font-size: 32px;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-weight: 600;
         }
-        
+
         .welcome-screen p {
-            color: #666;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .quick-start-guide {
+            max-width: 600px;
+            width: 100%;
+            margin-bottom: 40px;
+        }
+
+        .quick-start-title {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
             margin-bottom: 30px;
         }
-        
+
+        .quick-action {
+            padding: 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .quick-action:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .quick-action i {
+            font-size: 24px;
+            color: var(--accent-color);
+            margin-bottom: 8px;
+        }
+
+        .quick-action span {
+            display: block;
+            font-size: 13px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
         .agent-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            max-width: 800px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            max-width: 900px;
             width: 100%;
         }
-        
+
         .agent-card {
-            background: #f8f9fa;
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            padding: 20px;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: var(--transition);
             text-align: left;
         }
-        
+
         .agent-card:hover {
-            border-color: #667eea;
+            border-color: var(--accent-color);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            box-shadow: var(--shadow-md);
         }
-        
+
+        .agent-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .agent-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
         .agent-card h3 {
             font-size: 16px;
-            margin-bottom: 8px;
-            color: #333;
+            color: var(--text-primary);
+            font-weight: 600;
         }
-        
+
         .agent-card p {
-            font-size: 13px;
-            color: #666;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
         }
-        
-        /* 채팅 화면 */
+
+        .agent-card-tags {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .agent-tag {
+            font-size: 11px;
+            padding: 4px 8px;
+            background: var(--accent-light);
+            color: var(--accent-color);
+            border-radius: 20px;
+        }
+
+        /* ==========================================
+           Chat Container
+           ========================================== */
         .chat-container {
             flex: 1;
-            display: flex;
-            flex-direction: column;
             display: none;
+            flex-direction: column;
         }
-        
+
         .chat-header {
-            background: white;
-            border-bottom: 1px solid #e9ecef;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
             padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .chat-header-left {
             display: flex;
             align-items: center;
             gap: 15px;
+            flex: 1;
         }
-        
+
+        .chat-header-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
         .chat-header h2 {
             font-size: 16px;
-            color: #333;
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        
+
+        .chat-header h2:hover .edit-icon {
+            opacity: 1;
+        }
+
+        .edit-icon {
+            opacity: 0;
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: opacity 0.2s;
+        }
+
+        .chat-session-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
         .delegation-badge {
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 4px 10px;
-            border-radius: 12px;
+            background: var(--accent-light);
+            color: var(--accent-color);
+            padding: 4px 12px;
+            border-radius: 20px;
             font-size: 11px;
+            font-weight: 500;
         }
-        
+
         .chat-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
+            align-items: center;
         }
-        
-        .reset-btn {
-            background: #fff3e0;
-            color: #f57c00;
-            border: 1px solid #ffcc80;
-            padding: 8px 16px;
-            border-radius: 6px;
+
+        .chat-action-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            padding: 8px 14px;
+            border-radius: var(--radius-md);
             cursor: pointer;
             font-size: 13px;
-            transition: all 0.2s;
+            color: var(--text-secondary);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        
-        .reset-btn:hover {
-            background: #ffe0b2;
+
+        .chat-action-btn:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            background: var(--accent-light);
         }
-        
-        .close-chat-btn {
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #666;
-            padding: 5px;
+
+        .chat-action-btn.danger:hover {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+            background: var(--error-bg);
         }
-        
+
+        /* ==========================================
+           Chat Messages
+           ========================================== */
         .chat-messages {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            background: #f8f9fa;
+            background: var(--bg-primary);
         }
-        
+
         .message {
             margin-bottom: 20px;
             animation: fadeIn 0.3s ease;
+            position: relative;
         }
-        
+
+        .message:hover .message-actions {
+            opacity: 1;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
+
         .message.user {
             text-align: right;
         }
-        
-        .message-bubble {
-            display: inline-block;
+
+        .message-wrapper {
+            display: inline-flex;
+            flex-direction: column;
             max-width: 70%;
+        }
+
+        .message-bubble {
             padding: 12px 16px;
-            border-radius: 18px;
+            border-radius: var(--radius-xl);
             word-wrap: break-word;
             text-align: left;
+            position: relative;
         }
-        
+
         .message.user .message-bubble {
-            background: #667eea;
+            background: var(--accent-color);
             color: white;
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: var(--radius-sm);
         }
-        
+
         .message.assistant .message-bubble {
-            background: white;
-            color: #333;
-            border: 1px solid #e9ecef;
-            border-bottom-left-radius: 4px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: var(--radius-sm);
+            box-shadow: var(--shadow-sm);
         }
-        
-        .message-agent {
+
+        .message-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
             font-size: 11px;
-            color: #999;
-            margin-top: 4px;
-            margin-left: 4px;
+            color: var(--text-muted);
         }
-        
-        .message.user .message-agent {
-            text-align: right;
-            margin-right: 4px;
+
+        .message.user .message-meta {
+            justify-content: flex-end;
         }
-        
+
+        .message-agent {
+            font-weight: 500;
+        }
+
+        .message-time {
+            opacity: 0.8;
+        }
+
+        .message-status {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-icon {
+            font-size: 12px;
+        }
+
+        .status-icon.read {
+            color: var(--accent-color);
+        }
+
+        .message-actions {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            display: flex;
+            gap: 4px;
+        }
+
+        .message.user .message-actions {
+            right: auto;
+            left: -10px;
+        }
+
+        .message-action {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .message-action:hover {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        /* Skeleton Loading */
+        .skeleton-message {
+            margin-bottom: 20px;
+        }
+
+        .skeleton-bubble {
+            height: 60px;
+            border-radius: var(--radius-xl);
+            background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-primary) 50%, var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            border-bottom-left-radius: var(--radius-sm);
+            width: fit-content;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* ==========================================
+           Chat Input Area
+           ========================================== */
         .chat-input-area {
-            background: white;
-            border-top: 1px solid #e9ecef;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
             padding: 15px 20px;
         }
-        
+
         .input-container {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             max-width: 900px;
             margin: 0 auto;
+            align-items: flex-end;
         }
-        
-        .chat-input {
+
+        .input-wrapper {
             flex: 1;
-            padding: 12px 16px;
-            border: 1px solid #e9ecef;
-            border-radius: 20px;
+            position: relative;
+        }
+
+        .chat-textarea {
+            width: 100%;
+            min-height: 44px;
+            max-height: 200px;
+            padding: 12px 44px 12px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
             font-size: 14px;
+            color: var(--text-primary);
+            resize: none;
             outline: none;
-            transition: border-color 0.2s;
+            transition: var(--transition);
+            font-family: inherit;
+            line-height: 1.5;
         }
-        
-        .chat-input:focus {
-            border-color: #667eea;
+
+        .chat-textarea:focus {
+            border-color: var(--accent-color);
+            background: var(--bg-secondary);
         }
-        
+
+        .chat-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .textarea-actions {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            display: flex;
+            gap: 4px;
+        }
+
+        .textarea-action {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .textarea-action:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
         .send-btn {
-            padding: 12px 24px;
-            background: #667eea;
+            width: 44px;
+            height: 44px;
+            background: var(--accent-color);
             color: white;
             border: none;
-            border-radius: 20px;
+            border-radius: 50%;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: background 0.2s;
+            font-size: 16px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
-        
+
         .send-btn:hover:not(:disabled) {
-            background: #5a67d8;
+            background: var(--accent-hover);
+            transform: scale(1.05);
         }
-        
+
         .send-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        
-        /* 로딩 */
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
+
+        .send-btn.sending {
+            animation: pulse 1s infinite;
         }
-        
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .keyboard-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        /* ==========================================
+           Toast Notifications
+           ========================================== */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            color: white;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            max-width: 400px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        .toast.hide {
+            animation: slideOut 0.3s ease forwards;
+        }
+
+        .toast.success { background: #2e7d32; }
+        .toast.error { background: #c62828; }
+        .toast.warning { background: #f57c00; }
+        .toast.info { background: #1976d2; }
+
+        /* ==========================================
+           Modal Dialogs
+           ========================================== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            width: 90%;
+            max-width: 450px;
+            animation: modalIn 0.2s ease;
+            box-shadow: var(--shadow-lg);
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            margin-bottom: 16px;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .modal-btn.primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .modal-btn.secondary {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-btn.secondary:hover {
+            background: var(--bg-hover);
+        }
+
+        /* ==========================================
+           Export Modal
+           ========================================== */
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .export-option {
+            padding: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .export-option:hover,
+        .export-option.selected {
+            border-color: var(--accent-color);
+            background: var(--accent-light);
+        }
+
+        .export-option i {
+            font-size: 20px;
+            color: var(--accent-color);
+        }
+
+        .export-option-info {
+            flex: 1;
+        }
+
+        .export-option-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .export-option-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* ==========================================
+           File Attachments
+           ========================================== */
+        .attachment-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+        }
+
+        .attachment-icon {
             width: 40px;
             height: 40px;
+            background: var(--accent-light);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-color);
+            font-size: 18px;
+        }
+
+        .attachment-info {
+            flex: 1;
+        }
+
+        .attachment-name {
+            font-size: 13px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .attachment-size {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .attachment-remove {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+
+        .attachment-remove:hover {
+            background: var(--error-bg);
+            color: var(--error-color);
+        }
+
+        /* Image in message */
+        .message-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: var(--radius-md);
+            margin-top: 8px;
+        }
+
+        /* ==========================================
+           Loading State
+           ========================================== */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--bg-primary);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
         }
-        
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            to { transform: rotate(360deg); }
         }
-        
-        /* 빈 상태 */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
+
+        /* ==========================================
+           Responsive Design
+           ========================================== */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                z-index: 1000;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            .chat-header-left {
+                gap: 8px;
+            }
+
+            .chat-actions {
+                gap: 4px;
+            }
+
+            .chat-action-btn span {
+                display: none;
+            }
+
+            .message-wrapper {
+                max-width: 85%;
+            }
+
+            .quick-actions {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .agent-cards {
+                grid-template-columns: 1fr;
+            }
         }
-        
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
+
+        @media (max-width: 480px) {
+            .welcome-screen {
+                padding: 20px;
+            }
+
+            .welcome-screen h2 {
+                font-size: 24px;
+            }
+
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .chat-messages {
+                padding: 12px;
+            }
+
+            .chat-input-area {
+                padding: 12px;
+            }
+
+            .input-container {
+                gap: 8px;
+            }
+        }
+
+        /* ==========================================
+           Scrollbar Styles
+           ========================================== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* ==========================================
+           Search Highlight
+           ========================================== */
+        .search-highlight {
+            background: rgba(255, 235, 59, 0.5);
+            border-radius: 2px;
+        }
+
+        [data-theme="dark"] .search-highlight {
+            background: rgba(255, 235, 59, 0.3);
         }
     </style>
 </head>
 <body>
+    <!-- Mobile Sidebar Toggle -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
     <div class="app-container">
-        <!-- 사이드바: 세션 목록 -->
-        <aside class="sidebar">
+        <!-- Sidebar: Session List -->
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h1>💬 채팅 세션</h1>
+                <h1><i class="fas fa-comments"></i> 채팅 세션</h1>
+                <div class="sidebar-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="sessionSearch" placeholder="세션 검색..." oninput="searchSessions(this.value)">
+                </div>
                 <button class="new-chat-btn" onclick="createNewSession()">
-                    + 새 채팅 시작
+                    <i class="fas fa-plus"></i> 새 채팅 시작
                 </button>
             </div>
             <div class="sessions-list" id="sessionsList">
                 <div class="loading">
-                    <div class="spinner"></div>
-                    <p>세션 목록 로딩 중...</p>
+                    <div class="skeleton-message"><div class="skeleton-bubble"></div></div>
+                    <div class="skeleton-message"><div class="skeleton-bubble"></div></div>
                 </div>
             </div>
-            <!-- 사용자 정보 푸터 -->
+            <!-- User Info Footer -->
             <div class="sidebar-footer" id="userFooter" style="display: none;">
                 <div class="user-info">
-                    <span class="user-name" id="footerUserName"></span>
-                    <span class="user-role" id="footerUserRole"></span>
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div class="user-details">
+                        <span class="user-name" id="footerUserName"></span>
+                        <span class="user-role" id="footerUserRole"></span>
+                    </div>
                 </div>
-                <a href="/admin" class="admin-link" id="adminLink" style="display: none;">
-                    ⚙️ 관리자
-                </a>
+                <div class="footer-actions">
+                    <a href="/admin" class="footer-btn" id="adminLink" style="display: none;">
+                        <i class="fas fa-cog"></i> 관리자
+                    </a>
+                    <button class="footer-btn" onclick="showExportModal()">
+                        <i class="fas fa-download"></i> 내보내기
+                    </button>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="테마 변경">
+                        <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
+                </div>
             </div>
         </aside>
-        
-        <!-- 메인 콘텐츠 -->
+
+        <!-- Main Content -->
         <main class="main-content">
-            <!-- 웰컴 화면 -->
+            <!-- Welcome Screen -->
             <div class="welcome-screen" id="welcomeScreen">
                 <h2>ADK Agent와 대화를 시작하세요</h2>
                 <p>아래 Agent 중 하나를 선택하여 새로운 채팅을 시작하거나,<br>왼쪽 목록에서 기존 세션을 선택하세요.</p>
+                
+                <div class="quick-start-guide">
+                    <div class="quick-start-title">빠른 시작</div>
+                    <div class="quick-actions">
+                        <div class="quick-action" onclick="createNewSession()">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>새 채팅</span>
+                        </div>
+                        <div class="quick-action" onclick="showExportModal()">
+                            <i class="fas fa-file-export"></i>
+                            <span>내보내기</span>
+                        </div>
+                        <div class="quick-action" onclick="showKeyboardShortcuts()">
+                            <i class="fas fa-keyboard"></i>
+                            <span>단축키</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="agent-cards" id="agentCards">
                     <div class="loading">
-                        <div class="spinner"></div>
-                        <p>Agent 목록 로딩 중...</p>
+                        <div class="skeleton-message"><div class="skeleton-bubble"></div></div>
                     </div>
                 </div>
             </div>
-            
-            <!-- 채팅 화면 -->
+
+            <!-- Chat Container -->
             <div class="chat-container" id="chatContainer">
                 <div class="chat-header">
                     <div class="chat-header-left">
-                        <h2 id="chatTitle">대화 중...</h2>
+                        <div class="chat-header-info">
+                            <h2 id="chatTitle" onclick="editSessionName()">
+                                대화 중...
+                                <i class="fas fa-pen edit-icon"></i>
+                            </h2>
+                            <div class="chat-session-meta" id="chatSessionMeta"></div>
+                        </div>
                         <span class="delegation-badge" id="delegationBadge" style="display: none;"></span>
                     </div>
                     <div class="chat-actions">
-                        <button class="reset-btn" onclick="resetCurrentSession()">
-                            🔄 초기화
+                        <button class="chat-action-btn" onclick="showSearchModal()" title="메시지 검색">
+                            <i class="fas fa-search"></i>
                         </button>
-                        <button class="close-chat-btn" onclick="closeChat()">×</button>
+                        <button class="chat-action-btn" onclick="showExportModal()" title="내보내기">
+                            <i class="fas fa-download"></i> <span>내보내기</span>
+                        </button>
+                        <button class="chat-action-btn" onclick="resetCurrentSession()" title="초기화">
+                            <i class="fas fa-redo"></i> <span>초기화</span>
+                        </button>
+                        <button class="chat-action-btn danger" onclick="closeChat()" title="닫기">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                 </div>
-                
+
                 <div class="chat-messages" id="chatMessages">
-                    <!-- 메시지가 여기에 추가됨 -->
+                    <div class="empty-state">
+                        <div class="empty-state-icon">💬</div>
+                        <p>메시지를 입력하여 대화를 시작하세요</p>
+                    </div>
                 </div>
-                
+
                 <div class="chat-input-area">
+                    <div id="attachmentPreview" style="display: none;"></div>
                     <div class="input-container">
-                        <input type="text" class="chat-input" id="messageInput" 
-                               placeholder="메시지를 입력하세요..." 
-                               onkeypress="handleKeyPress(event)">
-                        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
-                            전송
+                        <div class="input-wrapper">
+                            <textarea 
+                                class="chat-textarea" 
+                                id="messageInput" 
+                                placeholder="메시지를 입력하세요... (Shift+Enter 줄바꿈)"
+                                onkeydown="handleTextareaKeydown(event)"
+                                oninput="autoResizeTextarea(this)"
+                                rows="1"
+                            ></textarea>
+                            <div class="textarea-actions">
+                                <button class="textarea-action" onclick="attachFile()" title="파일 첨부">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="전송 (Cmd/Ctrl+Enter)">
+                            <i class="fas fa-paper-plane"></i>
                         </button>
+                    </div>
+                    <div class="keyboard-hint">
+                        <i class="fas fa-keyboard"></i> Shift+Enter 줄바꿈 · Cmd/Ctrl+Enter 전송 · ESC 닫기
                     </div>
                 </div>
             </div>
         </main>
     </div>
-    
+
+    <!-- Rename Modal -->
+    <div class="modal-overlay" id="renameModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>세션 이름 변경</h3>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="modal-input" id="renameInput" placeholder="새 세션 이름">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" onclick="closeModal('renameModal')">취소</button>
+                <button class="modal-btn primary" onclick="confirmRename()">변경</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>대화 내보내기</h3>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <div class="export-option" onclick="exportChat('json')">
+                        <i class="fas fa-file-code"></i>
+                        <div class="export-option-info">
+                            <div class="export-option-title">JSON 형식</div>
+                            <div class="export-option-desc">구조화된 데이터로 내보내기</div>
+                        </div>
+                    </div>
+                    <div class="export-option" onclick="exportChat('txt')">
+                        <i class="fas fa-file-alt"></i>
+                        <div class="export-option-info">
+                            <div class="export-option-title">텍스트 형식</div>
+                            <div class="export-option-desc">읽기 쉬운 텍스트로 내보내기</div>
+                        </div>
+                    </div>
+                    <div class="export-option" onclick="exportChat('csv')">
+                        <i class="fas fa-file-csv"></i>
+                        <div class="export-option-info">
+                            <div class="export-option-title">CSV 형식</div>
+                            <div class="export-option-desc">스프레드시트용으로 내보내기</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" onclick="closeModal('exportModal')">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div class="modal-overlay" id="searchModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>메시지 검색</h3>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="modal-input" id="searchInput" placeholder="검색어를 입력하세요..." oninput="searchInMessages(this.value)">
+                <div id="searchResults" style="margin-top: 16px; max-height: 300px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" onclick="closeModal('searchModal')">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal-overlay" id="shortcutsModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>키보드 단축키</h3>
+            </div>
+            <div class="modal-body">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px 0; font-weight: 600;">Cmd/Ctrl + Enter</td>
+                        <td style="padding: 12px 0; color: var(--text-secondary);">메시지 전송</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px 0; font-weight: 600;">Shift + Enter</td>
+                        <td style="padding: 12px 0; color: var(--text-secondary);">줄바꿈</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px 0; font-weight: 600;">ESC</td>
+                        <td style="padding: 12px 0; color: var(--text-secondary);">모달/채팅 닫기</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px 0; font-weight: 600;">Cmd/Ctrl + K</td>
+                        <td style="padding: 12px 0; color: var(--text-secondary);">세션 검색</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; font-weight: 600;">Cmd/Ctrl + /</td>
+                        <td style="padding: 12px 0; color: var(--text-secondary);">단축키 도움말</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" onclick="closeModal('shortcutsModal')">닫기</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // 상태 관리 (기존 admin 방식 활용)
+        // ==========================================
+        // State Management
+        // ==========================================
         const AppState = {
             currentSessionId: null,
             currentAgent: null,
@@ -515,141 +1614,158 @@
             agents: [],
             knoxId: '',
             isAdmin: false,
-            currentUser: null
+            currentUser: null,
+            isSending: false,
+            currentPage: 1,
+            hasMoreMessages: true,
+            selectedSessions: [],
+            unreadCounts: {}
         };
-        
-        // 페이지 로드 시 Knox ID 가져오기 (기존 admin 방식)
-        async function loadCurrentUser() {
-            try {
-                const response = await fetch('/main/api/me');
-                if (response.ok) {
-                    const user = await response.json();
-                    AppState.currentUser = user;
-                    AppState.knoxId = user.knox_id || '';
-                    AppState.isAdmin = user.is_admin || false;
-                    console.log('User loaded:', AppState.knoxId, 'Admin:', AppState.isAdmin);
-                    
-                    // 사이드바 푸터 업데이트
-                    updateUserFooter();
-                    
-                    // 세션 로드
-                    await loadSessions();
-                } else {
-                    console.warn('Failed to load user, using test mode');
-                    AppState.knoxId = 'test_user_' + Date.now();
-                    updateUserFooter();
-                    await loadSessions();
-                }
-            } catch (error) {
-                console.error('User load error:', error);
-                AppState.knoxId = 'test_user_' + Date.now();
-                updateUserFooter();
-                await loadSessions();
+
+        // ==========================================
+        // Initialization
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Load theme preference
+            loadTheme();
+            
+            await loadAgents();
+            await loadCurrentUser();
+            
+            // Check URL hash
+            const hash = window.location.hash;
+            if (hash.startsWith('#session=')) {
+                const sessionId = hash.replace('#session=', '');
+                await selectSession(sessionId);
+            }
+
+            // Global keyboard shortcuts
+            document.addEventListener('keydown', handleGlobalKeydown);
+
+            // Polling for unread counts
+            setInterval(pollUnreadCounts, 30000);
+        });
+
+        // ==========================================
+        // Theme Management
+        // ==========================================
+        function loadTheme() {
+            const theme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            updateThemeIcon(theme);
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            if (icon) {
+                icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
             }
         }
-        
-        // 사용자 푸터 UI 업데이트
-        function updateUserFooter() {
-            const footer = document.getElementById('userFooter');
-            const userName = document.getElementById('footerUserName');
-            const userRole = document.getElementById('footerUserRole');
-            const adminLink = document.getElementById('adminLink');
-            
-            if (footer) footer.style.display = 'block';
-            if (userName) userName.textContent = AppState.knoxId || 'Unknown';
-            if (userRole) userRole.textContent = AppState.isAdmin ? '관리자' : '사용자';
-            if (adminLink && AppState.isAdmin) adminLink.style.display = 'block';
-        }
-        
-        // API 호출 헬퍼 (Knox ID 헤더 포함)
+
+        // ==========================================
+        // API Calls
+        // ==========================================
         async function apiCall(url, options = {}) {
             const headers = {
                 'Content-Type': 'application/json',
                 'x-knox-id': AppState.knoxId,
                 ...options.headers
             };
-            
-            const response = await fetch(url, { ...options, headers });
-            
-            if (response.status === 401) {
-                alert('인증이 필요합니다. 다시 로그인해주세요.');
-                window.location.href = '/main/login';
-                throw new Error('Unauthorized');
+
+            try {
+                const response = await fetch(url, { ...options, headers });
+                
+                if (response.status === 401) {
+                    showToast('인증이 필요합니다.', 'error');
+                    throw new Error('Unauthorized');
+                }
+                
+                if (response.status === 403) {
+                    showToast('접근 권한이 없습니다.', 'error');
+                    throw new Error('Forbidden');
+                }
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text || `HTTP ${response.status}`);
+                }
+                
+                return response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
             }
-            
-            if (response.status === 403) {
-                alert('접근 권한이 없습니다.');
-                throw new Error('Forbidden');
-            }
-            
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(text || `HTTP ${response.status}`);
-            }
-            
-            return response.json();
         }
-        
-        // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadAgents();
-            await loadCurrentUser();  // Knox ID 로드 후 세션 로드
-            
-            // URL에서 세션 ID 확인
-            const hash = window.location.hash;
-            if (hash.startsWith('#session=')) {
-                const sessionId = hash.replace('#session=', '');
-                selectSession(sessionId);
+
+        async function loadCurrentUser() {
+            try {
+                const user = await apiCall('/main/api/me');
+                AppState.currentUser = user;
+                AppState.knoxId = user.knox_id || '';
+                AppState.isAdmin = user.is_admin || false;
+                updateUserFooter();
+                await loadSessions();
+            } catch (error) {
+                console.warn('Using test mode');
+                AppState.knoxId = 'test_user_' + Date.now();
+                updateUserFooter();
+                await loadSessions();
             }
-        });
-        
-        // Agent 목록 로드
+        }
+
         async function loadAgents() {
             try {
                 const agents = await apiCall('/api/agents/detail');
                 AppState.agents = agents;
                 renderAgentCards();
             } catch (error) {
-                console.error('Agent 로드 실패:', error);
-                document.getElementById('agentCards').innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">❌</div>
-                        <p>Agent 목록을 불러올 수 없습니다</p>
-                    </div>
-                `;
+                showToast('Agent 목록을 불러올 수 없습니다.', 'error');
             }
         }
-        
-        // 세션 목록 로드
+
         async function loadSessions() {
+            showLoading(true);
             try {
-                const response = await fetch('/api/sessions');
-                const data = await response.json();
+                const data = await apiCall('/api/sessions');
                 AppState.sessions = data.sessions || [];
                 renderSessionsList();
             } catch (error) {
-                console.error('세션 로드 실패:', error);
-                document.getElementById('sessionsList').innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📭</div>
-                        <p>세션을 불러올 수 없습니다</p>
-                    </div>
-                `;
+                showToast('세션 목록을 불러올 수 없습니다.', 'error');
+            } finally {
+                showLoading(false);
             }
         }
-        
-        // Agent 카드 렌더링
+
+        // ==========================================
+        // UI Rendering
+        // ==========================================
         function renderAgentCards() {
             const container = document.getElementById('agentCards');
             container.innerHTML = AppState.agents.map(agent => `
                 <div class="agent-card" onclick="startNewChat('${agent.id}')">
-                    <h3>${agent.name}</h3>
+                    <div class="agent-card-header">
+                        <div class="agent-card-icon" style="background: ${agent.color}20; color: ${agent.color};">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h3>${agent.name}</h3>
+                    </div>
                     <p>${agent.description}</p>
+                    <div class="agent-card-tags">
+                        <span class="agent-tag">Level ${agent.level}</span>
+                        ${agent.sub_agents.length > 0 ? `<span class="agent-tag">하위 ${agent.sub_agents.length}개</span>` : ''}
+                    </div>
                 </div>
             `).join('');
         }
-        
-        // 세션 목록 렌더링
+
         function renderSessionsList() {
             const container = document.getElementById('sessionsList');
             
@@ -662,120 +1778,178 @@
                 `;
                 return;
             }
-            
+
             container.innerHTML = AppState.sessions.map(session => {
                 const date = new Date(session.updated_at);
-                const timeStr = date.toLocaleTimeString('ko-KR', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                const dateStr = date.toLocaleDateString('ko-KR', {
-                    month: 'short',
-                    day: 'numeric'
-                });
+                const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                const dateStr = date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+                const unread = AppState.unreadCounts[session.session_id] || 0;
                 
                 return `
                     <div class="session-item ${session.session_id === AppState.currentSessionId ? 'active' : ''}" 
                          onclick="selectSession('${session.session_id}')"
                          data-session-id="${session.session_id}">
-                        <div class="session-name">세션 ${session.session_id.slice(-6)}</div>
-                        <div class="session-meta">
-                            <span>${dateStr} ${timeStr}</span>
-                            <span>${session.message_count}개 메시지</span>
+                        <div class="session-icon">
+                            <i class="fas fa-comment-dots"></i>
                         </div>
-                        <button class="session-delete-btn" 
-                                onclick="event.stopPropagation(); deleteSession('${session.session_id}')"
-                                title="세션 삭제">×</button>
+                        <div class="session-info">
+                            <div class="session-name">
+                                ${session.name || `세션 ${session.session_id.slice(-6)}`}
+                                ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
+                            </div>
+                            <div class="session-meta">
+                                <span>${dateStr} ${timeStr}</span>
+                                <span>${session.message_count}개 메시지</span>
+                            </div>
+                        </div>
+                        <div class="session-actions">
+                            <button class="session-action-btn" onclick="event.stopPropagation(); showRenameModal('${session.session_id}')" title="이름 변경">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="session-action-btn delete" onclick="event.stopPropagation(); deleteSession('${session.session_id}')" title="삭제">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
             }).join('');
         }
-        
-        // 새 채팅 시작
+
+        function updateUserFooter() {
+            const footer = document.getElementById('userFooter');
+            const userName = document.getElementById('footerUserName');
+            const userRole = document.getElementById('userRole');
+            const adminLink = document.getElementById('adminLink');
+            const userAvatar = document.getElementById('userAvatar');
+            
+            if (footer) footer.style.display = 'block';
+            if (userName) userName.textContent = AppState.knoxId || 'Unknown';
+            if (userRole) userRole.textContent = AppState.isAdmin ? '관리자' : '사용자';
+            if (adminLink && AppState.isAdmin) adminLink.style.display = 'flex';
+            if (userAvatar) userAvatar.textContent = (AppState.knoxId || 'U').charAt(0).toUpperCase();
+        }
+
+        // ==========================================
+        // Session Management
+        // ==========================================
         function startNewChat(agentId) {
             const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             AppState.currentAgent = agentId;
             AppState.currentSessionId = sessionId;
+            AppState.currentPage = 1;
+            AppState.hasMoreMessages = true;
             
-            // URL 업데이트
             window.location.hash = '#session=' + sessionId;
             
-            // UI 전환
             showChat();
-            document.getElementById('chatTitle').textContent = '새 대화';
-            document.getElementById('chatMessages').innerHTML = '';
+            const agent = AppState.agents.find(a => a.id === agentId);
+            document.getElementById('chatTitle').innerHTML = `
+                새 대화 <i class="fas fa-pen edit-icon"></i>
+            `;
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">🤖</div>
+                    <p><strong>${agent?.name || 'Agent'}</strong>와 대화를 시작하세요</p>
+                </div>
+            `;
             document.getElementById('delegationBadge').style.display = 'none';
             
-            // 세션 목록에 추가 (로컬에서만)
-            const newSession = {
-                session_id: sessionId,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                message_count: 0,
-                delegation_chain: [agentId]
-            };
-            AppState.sessions.unshift(newSession);
-            renderSessionsList();
+            // Focus textarea
+            setTimeout(() => document.getElementById('messageInput').focus(), 100);
         }
-        
-        // 세션 선택 - 자동으로 히스토리 로드
+
         async function selectSession(sessionId) {
             AppState.currentSessionId = sessionId;
+            AppState.currentPage = 1;
+            AppState.hasMoreMessages = true;
             
-            // URL 업데이트
             window.location.hash = '#session=' + sessionId;
             
-            // UI 업데이트
             document.querySelectorAll('.session-item').forEach(item => {
                 item.classList.remove('active');
             });
             const item = document.querySelector(`[data-session-id="${sessionId}"]`);
             if (item) item.classList.add('active');
             
-            // 채팅 화면 표시
             showChat();
             
-            // 로딩 표시
+            // Show skeleton loading
             document.getElementById('chatMessages').innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>이전 채팅 내역을 불러오는 중...</p>
-                </div>
+                <div class="skeleton-message"><div class="skeleton-bubble" style="width: 60%"></div></div>
+                <div class="skeleton-message" style="text-align: right;"><div class="skeleton-bubble" style="width: 40%; display: inline-block;"></div></div>
+                <div class="skeleton-message"><div class="skeleton-bubble" style="width: 80%"></div></div>
             `;
             
-            // 히스토리 자동 로드 (기본 동작)
             await loadSessionHistory(sessionId);
+            closeSidebar();
+            
+            // Mark as read
+            await markMessagesRead(sessionId);
         }
-        
-        // 세션 히스토리 로드
-        async function loadSessionHistory(sessionId) {
+
+        async function loadSessionHistory(sessionId, page = 1) {
             try {
-                const response = await fetch(`/api/session/${sessionId}/history`);
-                const data = await response.json();
+                const data = await apiCall(`/api/session/${sessionId}/history?page=${page}`);
                 
-                // 제목 업데이트
                 const session = AppState.sessions.find(s => s.session_id === sessionId);
-                if (session) {
-                    document.getElementById('chatTitle').textContent = 
-                        `세션 ${sessionId.slice(-6)}`;
-                }
+                const title = session?.name || `세션 ${sessionId.slice(-6)}`;
                 
-                // 위임 체인 표시
-                if (data.delegation_chain && data.delegation_chain.length > 0) {
+                document.getElementById('chatTitle').innerHTML = `
+                    ${escapeHtml(title)} <i class="fas fa-pen edit-icon"></i>
+                `;
+                
+                document.getElementById('chatSessionMeta').textContent = 
+                    `${data.history.length}개 메시지 · ${session?.message_count || 0}개 저장됨`;
+                
+                if (data.delegation_chain?.length > 0) {
                     const badge = document.getElementById('delegationBadge');
                     badge.textContent = data.delegation_chain.join(' → ');
                     badge.style.display = 'inline-block';
                 }
                 
-                // 메시지 렌더링
                 const container = document.getElementById('chatMessages');
-                if (data.history && data.history.length > 0) {
-                    container.innerHTML = data.history.map(msg => `
-                        <div class="message ${msg.role}">
-                            <div class="message-bubble">${escapeHtml(msg.content)}</div>
-                            <div class="message-agent">${msg.agent_id || ''}</div>
+                
+                if (page === 1) {
+                    container.innerHTML = '';
+                }
+                
+                if (data.history.length > 0) {
+                    const messagesHtml = data.history.map(msg => `
+                        <div class="message ${msg.role}" data-message-id="${msg.id}">
+                            <div class="message-wrapper">
+                                <div class="message-bubble">${escapeHtml(msg.content)}</div>
+                                <div class="message-meta">
+                                    <span class="message-agent">${msg.agent_id || ''}</span>
+                                    <span class="message-time">${formatTime(msg.created_at)}</span>
+                                    <span class="message-status">
+                                        ${msg.role === 'assistant' ? `
+                                            <i class="fas fa-check-double status-icon ${msg.is_read ? 'read' : ''}"></i>
+                                        ` : ''}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="message-actions">
+                                <button class="message-action" onclick="copyMessage('${msg.id}')" title="복사">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                ${msg.role === 'user' ? `
+                                    <button class="message-action" onclick="retryMessage('${msg.id}')" title="재전송">
+                                        <i class="fas fa-redo"></i>
+                                    </button>
+                                ` : ''}
+                                <button class="message-action" onclick="deleteMessage('${msg.id}')" title="삭제">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
                     `).join('');
+                    
+                    if (page === 1) {
+                        container.innerHTML = messagesHtml;
+                    } else {
+                        container.insertAdjacentHTML('afterbegin', messagesHtml);
+                    }
+                    
                     scrollToBottom();
                 } else {
                     container.innerHTML = `
@@ -785,45 +1959,53 @@
                         </div>
                     `;
                 }
+                
+                // Update pagination state
+                AppState.currentPage = data.page;
+                AppState.hasMoreMessages = data.has_next;
+                
             } catch (error) {
-                console.error('히스토리 로드 실패:', error);
-                showError('히스토리를 불러올 수 없습니다');
+                showToast('히스토리를 불러올 수 없습니다.', 'error');
             }
         }
-        
-        // 메시지 전송
+
+        // ==========================================
+        // Messaging
+        // ==========================================
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
-            if (!message || !AppState.currentSessionId) return;
+            if (!message || !AppState.currentSessionId || AppState.isSending) return;
             
-            // 현재 Agent 확인
             let agentId = AppState.currentAgent;
             if (!agentId) {
-                // 세션에서 초기 Agent 찾기
                 const session = AppState.sessions.find(s => s.session_id === AppState.currentSessionId);
-                if (session && session.delegation_chain) {
+                if (session?.delegation_chain) {
                     agentId = session.delegation_chain[0];
                 }
             }
             
             if (!agentId) {
-                showError('Agent를 선택해주세요');
+                showToast('Agent를 선택해주세요', 'warning');
                 return;
             }
             
             input.value = '';
+            autoResizeTextarea(input);
             addMessage(message, 'user', agentId);
             
+            AppState.isSending = true;
             const sendBtn = document.getElementById('sendBtn');
             sendBtn.disabled = true;
-            sendBtn.textContent = '...';
+            sendBtn.classList.add('sending');
+            
+            // Show typing indicator
+            showTypingIndicator();
             
             try {
-                const response = await fetch('/api/run', {
+                const data = await apiCall('/api/run', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         agent: agentId,
                         message: message,
@@ -831,120 +2013,393 @@
                     })
                 });
                 
-                const data = await response.json();
+                removeTypingIndicator();
                 
                 if (data.response) {
-                    addMessage(data.response, 'assistant', data.agent_used);
+                    addMessage(data.response, 'assistant', data.agent_used, data.message_id);
                     
-                    // 위임 체인 업데이트
                     if (data.delegation_chain) {
                         const badge = document.getElementById('delegationBadge');
                         badge.textContent = data.delegation_chain.join(' → ');
                         badge.style.display = 'inline-block';
                     }
                     
-                    // 세션 목록 새로고침
                     await loadSessions();
-                } else {
-                    showError(data.error || '응답을 받지 못했습니다');
                 }
             } catch (error) {
-                showError('메시지 전송 실패: ' + error.message);
+                removeTypingIndicator();
+                showToast('메시지 전송 실패: ' + error.message, 'error');
             } finally {
+                AppState.isSending = false;
                 sendBtn.disabled = false;
-                sendBtn.textContent = '전송';
+                sendBtn.classList.remove('sending');
             }
         }
-        
-        // 메시지 추가
-        function addMessage(text, sender, agentId) {
+
+        function addMessage(text, sender, agentId, messageId = null) {
             const container = document.getElementById('chatMessages');
             
-            // 빈 상태 제거
             const emptyState = container.querySelector('.empty-state');
             if (emptyState) emptyState.remove();
             
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}`;
+            if (messageId) messageDiv.setAttribute('data-message-id', messageId);
+            
             messageDiv.innerHTML = `
-                <div class="message-bubble">${escapeHtml(text)}</div>
-                <div class="message-agent">${agentId || ''}</div>
+                <div class="message-wrapper">
+                    <div class="message-bubble">${escapeHtml(text)}</div>
+                    <div class="message-meta">
+                        <span class="message-agent">${agentId || ''}</span>
+                        <span class="message-time">${formatTime(new Date())}</span>
+                        <span class="message-status"></span>
+                    </div>
+                </div>
+                <div class="message-actions">
+                    <button class="message-action" onclick="copyMessage('${messageId}')" title="복사">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="message-action" onclick="deleteMessage('${messageId}')" title="삭제">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             `;
+            
             container.appendChild(messageDiv);
             scrollToBottom();
         }
-        
-        // 세션 초기화
-        async function resetCurrentSession() {
-            if (!AppState.currentSessionId) return;
-            
-            if (!confirm('현재 세션의 모든 메시지를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
-                return;
+
+        function showTypingIndicator() {
+            const container = document.getElementById('chatMessages');
+            const indicator = document.createElement('div');
+            indicator.className = 'message assistant';
+            indicator.id = 'typingIndicator';
+            indicator.innerHTML = `
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            container.appendChild(indicator);
+            scrollToBottom();
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        // ==========================================
+        // Message Actions
+        // ==========================================
+        async function copyMessage(messageId) {
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageEl) {
+                const content = messageEl.querySelector('.message-bubble').textContent;
+                await navigator.clipboard.writeText(content);
+                showToast('메시지가 복사되었습니다.', 'success');
             }
+        }
+
+        async function deleteMessage(messageId) {
+            if (!confirm('이 메시지를 삭제하시겠습니까?')) return;
             
             try {
-                const response = await fetch('/api/session/reset', {
+                await apiCall(`/api/messages/${messageId}/delete`, { method: 'POST' });
+                const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (messageEl) {
+                    messageEl.remove();
+                }
+                showToast('메시지가 삭제되었습니다.', 'success');
+            } catch (error) {
+                showToast('메시지 삭제 실패', 'error');
+            }
+        }
+
+        async function retryMessage(messageId) {
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageEl) {
+                const content = messageEl.querySelector('.message-bubble').textContent;
+                document.getElementById('messageInput').value = content;
+                autoResizeTextarea(document.getElementById('messageInput'));
+                showToast('메시지가 입력창에 복사되었습니다.', 'info');
+            }
+        }
+
+        async function markMessagesRead(sessionId) {
+            try {
+                await apiCall(`/api/session/${sessionId}/read`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                // Update badge
+                delete AppState.unreadCounts[sessionId];
+                renderSessionsList();
+            } catch (error) {
+                console.error('Mark read error:', error);
+            }
+        }
+
+        async function pollUnreadCounts() {
+            if (!AppState.currentSessionId) return;
+            
+            try {
+                const data = await apiCall(`/api/session/${AppState.currentSessionId}/unread`);
+                if (data.unread_count > 0) {
+                    AppState.unreadCounts[AppState.currentSessionId] = data.unread_count;
+                    renderSessionsList();
+                }
+            } catch (error) {
+                // Silent fail
+            }
+        }
+
+        // ==========================================
+        // Session Operations
+        // ==========================================
+        async function resetCurrentSession() {
+            if (!AppState.currentSessionId) return;
+            if (!confirm('현재 세션의 모든 메시지를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+            
+            showLoading(true);
+            try {
+                await apiCall('/api/session/reset', {
+                    method: 'POST',
                     body: JSON.stringify({ session_id: AppState.currentSessionId })
                 });
                 
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    // UI 초기화
-                    document.getElementById('chatMessages').innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">🔄</div>
-                            <p>세션이 초기화되었습니다. 새 대화를 시작하세요.</p>
-                        </div>
-                    `;
-                    document.getElementById('delegationBadge').style.display = 'none';
-                    
-                    // 세션 목록 새로고침
-                    await loadSessions();
-                    
-                    showSuccess('세션이 초기화되었습니다');
-                }
+                document.getElementById('chatMessages').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔄</div>
+                        <p>세션이 초기화되었습니다. 새 대화를 시작하세요.</p>
+                    </div>
+                `;
+                document.getElementById('delegationBadge').style.display = 'none';
+                await loadSessions();
+                showToast('세션이 초기화되었습니다.', 'success');
             } catch (error) {
-                showError('세션 초기화 실패: ' + error.message);
+                showToast('세션 초기화 실패', 'error');
+            } finally {
+                showLoading(false);
             }
         }
-        
-        // 세션 삭제
+
         async function deleteSession(sessionId) {
-            if (!confirm('이 세션을 삭제하시겠습니까?\n모든 메시지가 영구 삭제됩니다.')) {
+            if (!confirm('이 세션을 삭제하시겠습니까?\n모든 메시지가 영구 삭제됩니다.')) return;
+            
+            try {
+                await apiCall(`/api/session/${sessionId}`, { method: 'DELETE' });
+                
+                if (AppState.currentSessionId === sessionId) {
+                    closeChat();
+                }
+                await loadSessions();
+                showToast('세션이 삭제되었습니다.', 'success');
+            } catch (error) {
+                showToast('세션 삭제 실패', 'error');
+            }
+        }
+
+        function editSessionName() {
+            if (!AppState.currentSessionId) return;
+            showRenameModal(AppState.currentSessionId);
+        }
+
+        function showRenameModal(sessionId) {
+            const session = AppState.sessions.find(s => s.session_id === sessionId);
+            const currentName = session?.name || '';
+            document.getElementById('renameInput').value = currentName;
+            document.getElementById('renameModal').dataset.sessionId = sessionId;
+            openModal('renameModal');
+        }
+
+        async function confirmRename() {
+            const sessionId = document.getElementById('renameModal').dataset.sessionId;
+            const newName = document.getElementById('renameInput').value.trim();
+            
+            if (!newName) {
+                showToast('세션 이름을 입력해주세요.', 'warning');
                 return;
             }
             
             try {
-                const response = await fetch(`/api/session/${sessionId}`, {
-                    method: 'DELETE'
+                await apiCall('/api/session/rename', {
+                    method: 'POST',
+                    body: JSON.stringify({ session_id: sessionId, name: newName })
                 });
                 
-                const data = await response.json();
+                const session = AppState.sessions.find(s => s.session_id === sessionId);
+                if (session) session.name = newName;
+                renderSessionsList();
                 
-                if (data.status === 'success') {
-                    // 현재 보고 있던 세션이면 웰컴 화면으로
-                    if (AppState.currentSessionId === sessionId) {
-                        closeChat();
-                    }
-                    
-                    // 목록 새로고침
-                    await loadSessions();
-                    showSuccess('세션이 삭제되었습니다');
+                if (AppState.currentSessionId === sessionId) {
+                    document.getElementById('chatTitle').innerHTML = `
+                        ${escapeHtml(newName)} <i class="fas fa-pen edit-icon"></i>
+                    `;
                 }
+                
+                closeModal('renameModal');
+                showToast('세션 이름이 변경되었습니다.', 'success');
             } catch (error) {
-                showError('세션 삭제 실패: ' + error.message);
+                showToast('이름 변경 실패', 'error');
             }
         }
-        
-        // UI 헬퍼 함수
+
+        // ==========================================
+        // Search
+        // ==========================================
+        function searchSessions(query) {
+            const items = document.querySelectorAll('.session-item');
+            items.forEach(item => {
+                const name = item.querySelector('.session-name').textContent.toLowerCase();
+                item.style.display = name.includes(query.toLowerCase()) ? 'flex' : 'none';
+            });
+        }
+
+        function showSearchModal() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').innerHTML = '';
+            openModal('searchModal');
+        }
+
+        async function searchInMessages(query) {
+            if (!query.trim() || !AppState.currentSessionId) {
+                document.getElementById('searchResults').innerHTML = '';
+                return;
+            }
+            
+            try {
+                const data = await apiCall(`/api/session/${AppState.currentSessionId}/messages/search`, {
+                    method: 'POST',
+                    body: JSON.stringify({ session_id: AppState.currentSessionId, query, limit: 20 })
+                });
+                
+                const container = document.getElementById('searchResults');
+                if (data.results.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">검색 결과가 없습니다.</p>';
+                    return;
+                }
+                
+                container.innerHTML = data.results.map(msg => `
+                    <div style="padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer;" 
+                         onclick="jumpToMessage(${msg.id}); closeModal('searchModal');">
+                        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">
+                            ${formatTime(msg.created_at)} · ${msg.role === 'user' ? '사용자' : msg.agent_id}
+                        </div>
+                        <div style="font-size: 14px; color: var(--text-primary);">
+                            ${escapeHtml(msg.content).replace(new RegExp(query, 'gi'), match => `<span class="search-highlight">${match}</span>`)}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('searchResults').innerHTML = '<p style="text-align: center; color: var(--error-color); padding: 20px;">검색 중 오류가 발생했습니다.</p>';
+            }
+        }
+
+        function jumpToMessage(messageId) {
+            const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageEl) {
+                messageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                messageEl.style.background = 'rgba(102, 126, 234, 0.2)';
+                setTimeout(() => {
+                    messageEl.style.background = '';
+                }, 2000);
+            }
+        }
+
+        // ==========================================
+        // Export
+        // ==========================================
+        function showExportModal() {
+            openModal('exportModal');
+        }
+
+        async function exportChat(format) {
+            const sessionIds = AppState.currentSessionId 
+                ? [AppState.currentSessionId] 
+                : AppState.sessions.slice(0, 10).map(s => s.session_id);
+            
+            if (sessionIds.length === 0) {
+                showToast('내보낼 세션이 없습니다.', 'warning');
+                return;
+            }
+            
+            showLoading(true);
+            try {
+                const response = await fetch('/api/export', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-knox-id': AppState.knoxId
+                    },
+                    body: JSON.stringify({ session_ids: sessionIds, format })
+                });
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `adk_export_${new Date().toISOString().slice(0, 10)}.${format}`;
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                closeModal('exportModal');
+                showToast('내보내기가 완료되었습니다.', 'success');
+            } catch (error) {
+                showToast('내보내기 실패', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ==========================================
+        // File Attachment (Mock)
+        // ==========================================
+        function attachFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*,.pdf,.txt,.doc,.docx';
+            input.onchange = handleFileSelect;
+            input.click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Show preview
+            const preview = document.getElementById('attachmentPreview');
+            preview.style.display = 'flex';
+            preview.innerHTML = `
+                <div class="attachment-icon">
+                    <i class="fas fa-file"></i>
+                </div>
+                <div class="attachment-info">
+                    <div class="attachment-name">${escapeHtml(file.name)}</div>
+                    <div class="attachment-size">${formatFileSize(file.size)}</div>
+                </div>
+                <button class="attachment-remove" onclick="removeAttachment()">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            showToast('파일이 첨부되었습니다. (Mock)', 'success');
+        }
+
+        function removeAttachment() {
+            document.getElementById('attachmentPreview').style.display = 'none';
+            document.getElementById('attachmentPreview').innerHTML = '';
+        }
+
+        // ==========================================
+        // UI Helpers
+        // ==========================================
         function showChat() {
             document.getElementById('welcomeScreen').style.display = 'none';
             document.getElementById('chatContainer').style.display = 'flex';
         }
-        
+
         function closeChat() {
             AppState.currentSessionId = null;
             AppState.currentAgent = null;
@@ -955,41 +2410,152 @@
                 item.classList.remove('active');
             });
         }
-        
+
         function createNewSession() {
             closeChat();
-            // 웰컴 화면에서 사용자가 Agent 카드를 선택하도록 함
             document.getElementById('welcomeScreen').style.display = 'flex';
+            // Scroll to agents
+            document.getElementById('agentCards').scrollIntoView({ behavior: 'smooth' });
         }
-        
+
         function scrollToBottom() {
             const container = document.getElementById('chatMessages');
             container.scrollTop = container.scrollHeight;
         }
-        
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) overlay.classList.add('active');
+            else overlay.classList.remove('active');
+        }
+
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            
+            toast.innerHTML = `
+                <i class="fas ${icons[type]}"></i>
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        function showKeyboardShortcuts() {
+            openModal('shortcutsModal');
+        }
+
+        // ==========================================
+        // Textarea Auto-resize
+        // ==========================================
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+        }
+
+        // ==========================================
+        // Keyboard Handlers
+        // ==========================================
+        function handleTextareaKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
                 sendMessage();
             }
         }
-        
+
+        function handleGlobalKeydown(event) {
+            // Cmd/Ctrl + Enter to send
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                if (AppState.currentSessionId) {
+                    sendMessage();
+                }
+            }
+            
+            // Cmd/Ctrl + K to search sessions
+            if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+                event.preventDefault();
+                document.getElementById('sessionSearch')?.focus();
+            }
+            
+            // Cmd/Ctrl + / for shortcuts
+            if ((event.metaKey || event.ctrlKey) && event.key === '/') {
+                event.preventDefault();
+                showKeyboardShortcuts();
+            }
+            
+            // ESC to close
+            if (event.key === 'Escape') {
+                const modals = document.querySelectorAll('.modal-overlay.active');
+                if (modals.length > 0) {
+                    modals[modals.length - 1].classList.remove('active');
+                } else if (AppState.currentSessionId) {
+                    closeChat();
+                }
+            }
+        }
+
+        // ==========================================
+        // Utilities
+        // ==========================================
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
-        
-        function showError(message) {
-            // 간단한 에러 표시 (추후 토스트로 개선 가능)
-            alert('오류: ' + message);
+
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('ko-KR', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false
+            });
         }
-        
-        function showSuccess(message) {
-            // 간단한 성공 표시
-            console.log('성공:', message);
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
-        
-        // 뒤로/앞으로 가기 처리
+
+        // Handle popstate
         window.addEventListener('popstate', () => {
             const hash = window.location.hash;
             if (hash.startsWith('#session=')) {
