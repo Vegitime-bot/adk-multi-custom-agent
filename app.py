@@ -96,13 +96,10 @@ def create_app() -> FastAPI:
     if not settings.USE_MOCK_AUTH:
         print("[Startup] WARNING: SSO not implemented in ADK version. Use USE_MOCK_AUTH=true")
     
-    # ── Mock Auth: 챗봇 UI를 루트에 표시 ──────────────────────
-    @app.get("/", response_class=HTMLResponse)
-    def index():
-        html_file = STATIC_DIR / "index.html"
-        if html_file.exists():
-            return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
-        return HTMLResponse(content="<h1>Multi Custom Agent Service</h1><p>static/index.html 없음</p>")
+    # ── 루트 경로 /main으로 리다이렉트 ──────────────────────────
+    @app.get("/")
+    def root_redirect():
+        return RedirectResponse(url="/main")
 
     # ── 챗봇 상세 페이지 (chatbot 파라미터 지원) ─────────────────
     @app.get("/detail", response_class=HTMLResponse)

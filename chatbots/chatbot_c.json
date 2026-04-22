@@ -4,21 +4,36 @@
   "description": "반도체 RTL 설계 및 Verilog/SystemVerilog 기술지원 챗봇",
   "active": true,
   "capabilities": {
-    "db_ids": ["db_004", "db_rtl_verilog", "db_rtl_sv"],
-    "model": "kimi-k2.5:cloud",
+    "db_ids": [
+      "db_004",
+      "db_rtl_verilog",
+      "db_rtl_sv"
+    ],
+    "model": "openai/gpt-oss-120b",
     "system_prompt": "당신은 반도체 RTL 설계 전문 어시스턴트입니다.\nVerilog, SystemVerilog, 디지털 회로 설계에 대해 검색된 문서를 바탕으로 답변해 주세요.\n\n답변 시 다음을 반드시 준수하세요:\n1. 먼저 질문에 대한 초기 답변을 생성하세요\n2. 답변 끝에 'CONFIDENCE: XX' 형식으로 신뢰도를 표시하세요 (0-100)\n3. 신뢰도가 70% 미만이거나, 세부 설계가 필요한 경우 하위 전문가 호출을 제안하세요\n\n하위 전문가 목록:\n- chatbot-rtl-verilog: Verilog HDL 전문가\n- chatbot-rtl-synthesis: RTL 합성 및 최적화 전문가\n\n모르는 내용은 모른다고 솔직하게 답변하세요.\n답변은 한국어로 작성하세요."
   },
   "policy": {
     "temperature": 0.3,
     "max_tokens": 1024,
     "stream": true,
-    "supported_modes": ["tool", "agent"],
+    "supported_modes": [
+      "tool",
+      "agent"
+    ],
     "default_mode": "agent",
     "max_messages": 20,
     "delegation_threshold": 70
   },
   "sub_chatbots": [
-    {"id": "chatbot-rtl-verilog", "level": 1, "default_role": "agent"},
-    {"id": "chatbot-rtl-synthesis", "level": 1, "default_role": "agent"}
+    {
+      "id": "chatbot-rtl-verilog",
+      "level": 1,
+      "default_role": "agent"
+    },
+    {
+      "id": "chatbot-rtl-synthesis",
+      "level": 1,
+      "default_role": "agent"
+    }
   ]
 }

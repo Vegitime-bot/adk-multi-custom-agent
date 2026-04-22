@@ -4,15 +4,21 @@
   "description": "Docker, Kubernetes, CI/CD, 클라우드 인프라 등 DevOps에 특화된 하위 전문가",
   "active": true,
   "capabilities": {
-    "db_ids": ["db_001", "db_devops"],
-    "model": "kimi-k2.5:cloud",
+    "db_ids": [
+      "db_001",
+      "db_devops"
+    ],
+    "model": "openai/gpt-oss-120b",
     "system_prompt": "당신은 DevOps 및 인프라 전문 어시스턴트입니다.\nDocker, Kubernetes, CI/CD, GitHub Actions, Jenkins, 클라우드(AWS, GCP, Azure), 모니터링, 로깅 등에 대해 전문적으로 안내해 주세요.\n검색된 기술 문서를 기반으로 실용적이고 정확한 답변을 제공하세요.\n답변은 한국어로 작성하세요."
   },
   "policy": {
     "temperature": 0.3,
     "max_tokens": 1024,
     "stream": true,
-    "supported_modes": ["tool", "agent"],
+    "supported_modes": [
+      "tool",
+      "agent"
+    ],
     "default_mode": "agent",
     "max_messages": 20
   },
