@@ -217,11 +217,26 @@ class ADKSessionStorage(SessionStorageBackend):
         chatbot_id: str,
     ) -> Optional[ChatSession]:
         """동일 user + chatbot의 가장 최근 ADK 세션을 찾습니다."""
+        import asyncio
         try:
-            sessions = self._session_service.list_sessions(
+            sessions_result = self._session_service.list_sessions(
                 app_name="multi_custom_agent",
                 user_id=user_knox_id,
             )
+            # ADK 1.18.0: list_sessions가 비동기일 수 있음
+            if asyncio.iscoroutine(sessions_result):
+                try:
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        sessions_response = executor.submit(asyncio.run, sessions_result).result(timeout=5)
+                except Exception:
+                    sessions = []
+                else:
+                    # ListSessionsResponse에서 sessions 추출
+                    sessions = getattr(sessions_response, 'sessions', sessions_response)
+            else:
+                # ListSessionsResponse에서 sessions 추출
+                sessions = getattr(sessions_result, 'sessions', sessions_result)
         except Exception:
             sessions = [
                 s for s in getattr(self._session_service, '_sessions', {}).values()

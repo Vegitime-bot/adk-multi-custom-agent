@@ -18,14 +18,36 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-### 2. 서버 실행
+### 2. Mock Ingestion 서버 실행 (검색 기능 테스트용)
+
+```bash
+# 별도 터미널에서 실행
+python3 -m uvicorn mock_ingestion_server:app --host 0.0.0.0 --port 8001 --reload
+# → http://localhost:8001
+
+# 또는 백그라운드 실행
+nohup python3 -m uvicorn mock_ingestion_server:app --host 0.0.0.0 --port 8001 > logs/mock_ingestion.log 2>&1 &
+echo $! > logs/mock_ingestion.pid
+```
+
+**Mock 데이터 목록:**
+| DB ID | 설명 |
+|-------|------|
+| `db_hr_policy` | 인사평가제도, 규정 |
+| `db_hr_benefit` | 급여, 복리후생 |
+| `db_hr_overview` | 인사팀 개요 |
+| `db_tech_overview` | 기술지원팀 개요 |
+| `db_backend` | 백엔드 개발 |
+| `db_frontend` | 프론트엔드 개발 |
+
+### 3. 메인 서버 실행
 
 ```bash
 python3 -m uvicorn app:app --host 0.0.0.0 --port 8080 --reload
 # → http://localhost:8080
 ```
 
-### 3. 접속
+### 4. 접속
 
 | URL | 설명 |
 |-----|------|

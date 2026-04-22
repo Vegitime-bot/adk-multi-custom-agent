@@ -48,6 +48,7 @@ MOCK_DATA: dict[str, list[dict]] = {
     ],
     "db_hr_overview": [
         {"doc_id": "hr_ov1", "content": "인사팀 주요 업무: 채용, 교육, 평가.", "source": "hr_overview.txt"},
+        {"doc_id": "hr_ov2", "content": "인사 규정 및 정책 관련 문의는 하위 전문가 챗봇에게 위임됩니다.", "source": "hr_overview.txt"},
     ],
     "db_backend": [
         {"doc_id": "be_1", "content": "FastAPI ORM: SQLAlchemy와 함께 사용.", "source": "fastapi_db_guide.txt"},
