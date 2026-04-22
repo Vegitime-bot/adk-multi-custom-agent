@@ -134,18 +134,42 @@ class ADKSessionStorage(SessionStorageBackend):
             active_level=active_level,
         )
         
-        # ADK 세션 생성
+        # ADK 세션 생성 (비동기 처리)
         state = self._chat_to_adk_state(session)
+        adk_session = None
         try:
-            adk_session = self._session_service.create_session(
+            result = self._session_service.create_session(
                 app_name="multi_custom_agent",
                 user_id=user_knox_id,
                 session_id=sid,
                 state=state,
             )
+            # ADK 버전 차이: 코루틴인 경우 처리
+            import asyncio
+            if asyncio.iscoroutine(result):
+                # 동기적으로 실행
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # 이벤트 루프가 실행 중이면 새로운 루프 사용
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as pool:
+                            future = pool.submit(asyncio.run, result)
+                            adk_session = future.result(timeout=5)
+                    else:
+                        adk_session = loop.run_until_complete(result)
+                except Exception as e2:
+                    logger.warning(f"[ADKSessionStorage] Async execution failed: {e2}")
+                    adk_session = None
+            else:
+                adk_session = result
         except Exception as e:
             logger.warning(f"[ADKSessionStorage] ADK create_session failed: {e}")
-            # 로컬 캐시에만 저장하고 반환
+            adk_session = None
+        
+        # ADK 세션 생성 실패 시 로컬 세션 사용
+        if adk_session is None:
+            logger.info(f"[ADKSessionStorage] Using local session: {sid}")
             self._local_cache[sid] = session
             return session
         
