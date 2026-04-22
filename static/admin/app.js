@@ -1571,7 +1571,7 @@ function onTypeChange() {
 }
 
 function startChat(chatbotId) {
-    window.open(`/?chatbot=${chatbotId}`, '_blank');
+    window.open(`/detail?chatbot=${chatbotId}`, '_blank');
 }
 
 function setupEventListeners() {
