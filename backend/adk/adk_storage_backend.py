@@ -86,10 +86,13 @@ class ADKSessionStorage(SessionStorageBackend):
                 except ValueError:
                     role_override[bot_id] = ExecutionRole.AGENT
         
+        # ADK 1.18.0: session_id -> id 속성명 변경
+        session_id = getattr(adk_session, 'session_id', None) or getattr(adk_session, 'id', str(uuid.uuid4()))
+        
         return ChatSession(
-            session_id=adk_session.session_id,
+            session_id=session_id,
             chatbot_id=state.get("chatbot_id", ""),
-            user_knox_id=state.get("user_knox_id", adk_session.user_id),
+            user_knox_id=state.get("user_knox_id", getattr(adk_session, 'user_id', '')),
             role_override=role_override,
             active_level=state.get("active_level", 1),
         )
