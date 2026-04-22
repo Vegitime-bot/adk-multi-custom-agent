@@ -118,11 +118,13 @@ class HierarchicalAgentExecutor(AgentExecutor):
         delegation_strategy: Optional[DelegationStrategy] = None,
         sub_chatbot_selector: Optional[SubChatbotSelector] = None,
         response_synthesizer: Optional[ResponseSynthesizer] = None,
+        delegation_chain: Optional[list] = None,  # 위임 체인 추적
     ):
         super().__init__(chatbot_def, ingestion_client, memory_manager)
         self.chatbot_manager = chatbot_manager
         self.accumulated_context = accumulated_context
         self.delegation_depth = delegation_depth
+        self.delegation_chain = delegation_chain or [chatbot_def.name]  # 위임 체인 초기화
 
         # Policy 설정
         self.delegation_threshold = chatbot_def.policy.get(
@@ -389,6 +391,7 @@ class HierarchicalAgentExecutor(AgentExecutor):
             delegation_strategy=self._delegation_strategy,
             sub_chatbot_selector=self._sub_chatbot_selector,
             response_synthesizer=self._response_synthesizer,
+            delegation_chain=self.delegation_chain + [sub_chatbot.name],  # 위임 체인 전달
         )
 
         enhanced_message = message
@@ -494,13 +497,16 @@ class HierarchicalAgentExecutor(AgentExecutor):
                 delegation_strategy=self._delegation_strategy,
                 sub_chatbot_selector=self._sub_chatbot_selector,
                 response_synthesizer=self._response_synthesizer,
+                delegation_chain=self.delegation_chain + [sub_chatbot.name],  # 위임 체인 전달
             )
             enhanced_message = message
             if parent_context:
                 enhanced_message = f"[상위 Agent 컨텍스트] {parent_context[:500]}...\n\n[질문] {message}"
 
             sub_answer = "".join(sub_executor.execute(enhanced_message, session_id))
-            source_header = f"🧾 {self._source_note(sub_chatbot)}\n\n"
+            # 최하위 챗봇만 출처 표시 (체인의 마지막)
+            final_source = sub_executor.delegation_chain[-1] if sub_executor.delegation_chain else sub_chatbot.name
+            source_header = f"🧾 출처: {final_source} (위임 체인: {' → '.join(sub_executor.delegation_chain)})\n\n"
             return source_header + sub_answer
 
         def _fallback():
