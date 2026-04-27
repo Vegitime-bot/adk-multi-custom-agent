@@ -37,7 +37,7 @@ else:
         PostgreSQLMessageRepository,
         PostgreSQLDelegationRepository
     )
-    from backend.database.session import get_db
+    from backend.database.session import get_db_session as get_db
     SessionRepository = PostgreSQLSessionRepository
     MessageRepository = PostgreSQLMessageRepository
     DelegationRepository = PostgreSQLDelegationRepository
