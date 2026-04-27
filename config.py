@@ -24,7 +24,11 @@ class Settings:
     USE_MOCK_AUTH: bool = os.getenv("USE_MOCK_AUTH", "true").lower() == "true"
 
     # ── Mock 데이터 저장 경로 (PostgreSQL 미사용 시) ───────────────
-    MOCK_DATA_DIR: Path = Path(os.getenv("MOCK_DATA_DIR", str(PROJECT_ROOT / "data")))
+    # 환경 변수로 오버라이드 가능: MOCK_DATA_DIR=/path/to/data
+    # 또는 아래 기본값을 직접 수정
+    _MOCK_DATA_DIR_DEFAULT: str = str(PROJECT_ROOT / "data")  # ← 여기서 기본 경로 수정
+    
+    MOCK_DATA_DIR: Path = Path(os.getenv("MOCK_DATA_DIR", _MOCK_DATA_DIR_DEFAULT))
     MOCK_SESSIONS_FILE: Path = MOCK_DATA_DIR / "sessions.json"
     MOCK_MESSAGES_DIR: Path = MOCK_DATA_DIR / "messages"
 
