@@ -208,15 +208,9 @@ class ADKChatService:
 # 전역 서비스 인스턴스
 _adk_chat_service: Optional[ADKChatService] = None
 
-
 def get_adk_chat_service() -> ADKChatService:
     """ADK ChatService 싱글톤 반환"""
     global _adk_chat_service
     if _adk_chat_service is None:
         _adk_chat_service = ADKChatService()
     return _adk_chat_service
-
-
-def get_chat_service() -> ADKChatService:
-    """Legacy 호환용 - ADKChatService 반환"""
-    return get_adk_chat_service()
