@@ -63,7 +63,7 @@ class MessageListResponse(BaseModel):
 
 
 # ── API 엔드포인트 ────────────────────────────────────────────────
-@router.post("/api/sessions", response_model=SessionResponse)
+@router.post("/sessions", response_model=SessionResponse)
 async def create_session(request: SessionCreateRequest):
     """새 세션 생성"""
     session = session_repo.create(
@@ -74,7 +74,7 @@ async def create_session(request: SessionCreateRequest):
     return SessionResponse(**session)
 
 
-@router.get("/api/sessions", response_model=SessionListResponse)
+@router.get("/sessions", response_model=SessionListResponse)
 async def list_sessions(
     user_id: str,
     limit: int = Query(default=30, ge=1, le=100),
@@ -92,7 +92,7 @@ async def list_sessions(
     )
 
 
-@router.get("/api/sessions/{session_id}", response_model=SessionResponse)
+@router.get("/sessions/{session_id}", response_model=SessionResponse)
 async def get_session(session_id: str):
     """세션 상세 조회"""
     session = session_repo.get_by_id(session_id)
@@ -103,7 +103,7 @@ async def get_session(session_id: str):
     return SessionResponse(**session)
 
 
-@router.get("/api/sessions/{session_id}/messages", response_model=MessageListResponse)
+@router.get("/sessions/{session_id}/messages", response_model=MessageListResponse)
 async def get_session_messages(
     session_id: str,
     limit: int = Query(default=30, ge=1, le=100),
@@ -127,7 +127,7 @@ async def get_session_messages(
     )
 
 
-@router.delete("/api/sessions/{session_id}")
+@router.delete("/sessions/{session_id}")
 async def delete_session(session_id: str):
     """세션 삭제 (관련 메시지, 위임 체인도 함께 삭제)"""
     import os

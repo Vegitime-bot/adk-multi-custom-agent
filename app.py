@@ -129,7 +129,7 @@ def create_app() -> FastAPI:
     # ── 라우터 등록 ───────────────────────────────────────────────
     app.include_router(health_router)
     app.include_router(chat_router)
-    app.include_router(sessions_router)  # 새 세션 관리 API
+    app.include_router(sessions_router, prefix="/api")  # /api/sessions 경로로 등록
     app.include_router(admin_router, prefix="")
     app.include_router(permissions_router)
     app.include_router(conversations_router)
