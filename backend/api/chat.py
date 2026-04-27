@@ -58,7 +58,7 @@ def h(sid:str,chatbot_id:str,r:Request):auth.get_current_user(r);return[m.to_dic
 
 @router.get("/sessions")
 def ls(r:Request):
- u=auth.get_current_user(r);_,sm,_,_=_d(r);ss=sm.list_sessions();return{"sessions":[{"session_id":s.session_id,"chatbot_id":s.chatbot_id}for s in ss]}
+ u=auth.get_current_user(r);_,sm,_,_=_d(r);ss=sm.list_sessions();return{"sessions": [{"session_id": s.get("session_id"), "chatbot_id": s.get("chatbot_id")} for s in ss]}
 
 @router.delete("/sessions/{sid}")
 def cl(sid:str,r:Request):auth.get_current_user(r);sm,mm=_d(r)[1],_d(r)[2];mm.clear_all_for_session(sid);sm.close_session(sid);return{"message":f"세션 {sid} 종료"}
