@@ -24,9 +24,9 @@ try:
     from google.adk.agents import Agent
     from google.adk.models.lite_llm import LiteLlm
     from google.adk.sessions import Session
-    from google.adk.memory import InMemoryMemoryService
     from google.adk.sessions.in_memory_session_service import InMemorySessionService
     from google.genai import types
+    from google.adk.runners import Runner
     ADK_AVAILABLE = True
 except ImportError as e:
     logger.error(f"ADK import failed: {e}")
@@ -34,6 +34,7 @@ except ImportError as e:
 
 # 환경에 따른 모델 설정
 IS_DEVELOPMENT = os.getenv("DEVELOPMENT", "false").lower() == "true"
+
 
 def create_adk_model():
     """환경에 따른 ADK 모델 생성"""
@@ -58,7 +59,6 @@ class ADKChatService:
 
     def __init__(self):
         self.session_service = InMemorySessionService()
-        self.memory_service = InMemoryMemoryService()
         self._agents: dict[str, Agent] = {}
         logger.info(f"[ADKChatService] Initialized with DEVELOPMENT={IS_DEVELOPMENT}")
 
@@ -122,32 +122,20 @@ class ADKChatService:
 
         # ADK 세션 생성/가져오기
         user_id = user.get("knox_id", "anonymous")
-        adk_session = self.session_service.create_session(
+        adk_session = await self.session_service.create_session(
             app_name="multi-agent-service",
             user_id=user_id,
             session_id=session_id,
             state={}
         )
 
-        # 메모리에 사용자 메시지 저장
-        self.memory_service.add_message_to_memory(
-            app_name="multi-agent-service",
-            user_id=user_id,
-            session_id=session_id,
-            message={"role": "user", "content": message}
-        )
-
         # ADK 실행
         full_response = []
         try:
-            # Runner.run을 사용하여 에이전트 실행
-            from google.adk.runners import Runner
-
             runner = Runner(
                 agent=agent,
                 app_name="multi-agent-service",
-                session_service=self.session_service,
-                memory_service=self.memory_service
+                session_service=self.session_service
             )
 
             # 메시지 구성
@@ -165,16 +153,8 @@ class ADKChatService:
                             full_response.append(part.text)
                             yield sse_event(part.text)
 
-            # 메모리에 어시스턴트 응답 저장
-            response_text = "".join(full_response)
-            self.memory_service.add_message_to_memory(
-                app_name="multi-agent-service",
-                user_id=user_id,
-                session_id=session_id,
-                message={"role": "assistant", "content": response_text}
-            )
-
             # 저장
+            response_text = "".join(full_response)
             await self._save_conversation(
                 session_id=session_id,
                 user=user,

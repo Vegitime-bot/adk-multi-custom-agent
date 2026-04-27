@@ -22,7 +22,6 @@ try:
     from google.adk.agents import Agent
     from google.adk.models.lite_llm import LiteLlm
     from google.adk.sessions.in_memory_session_service import InMemorySessionService
-    from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
     from google.adk.runners import Runner
     from google.genai import types
     ADK_AVAILABLE = True
@@ -56,7 +55,6 @@ class ADKWorkflowOrchestrator:
             raise RuntimeError("ADK not available")
         
         self.session_service = InMemorySessionService()
-        self.memory_service = InMemoryMemoryService()
         self._agents: dict[str, Agent] = {}
         
         # 3개 Agent 로드
@@ -177,11 +175,18 @@ class ADKWorkflowOrchestrator:
             return ""
         
         try:
+            # 세션 먼저 생성
+            from google.adk.sessions import Session
+            session = self.session_service.create_session(
+                app_name="adk-workflow",
+                user_id=user_id,
+                session_id=session_id
+            )
+            
             runner = Runner(
                 agent=agent,
                 app_name="adk-workflow",
-                session_service=self.session_service,
-                memory_service=self.memory_service
+                session_service=self.session_service
             )
             
             content = types.Content(role='user', parts=[types.Part(text=message)])
@@ -206,6 +211,7 @@ class ADKWorkflowOrchestrator:
 
 # 전역 오케스트레이터
 _orchestrator: Optional[ADKWorkflowOrchestrator] = None
+
 
 def get_orchestrator() -> ADKWorkflowOrchestrator:
     """오케스트레이터 싱글톤 반환"""
