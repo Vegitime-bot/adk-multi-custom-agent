@@ -235,6 +235,10 @@
     try {
       const res = await fetch(`${BASE}/api/chatbots`);
       chatbots = await res.json();  // 전역 변수에 저장
+      
+      // 현재 선택된 값 저장
+      const previousSelection = selector.value;
+      
       selector.innerHTML = '<option value="">챗봇 선택...</option>';
       chatbots.forEach(b => {
         const opt = document.createElement('option');
@@ -244,11 +248,16 @@
         selector.appendChild(opt);
       });
       
-      // URL 파라미터에서 챗봇 ID 확인하고 자동 선택
+      // URL 파라미터에서 챗봇 ID 확인 (우선순위: URL > 이전 선택)
       const urlChatbotId = getUrlParam('chatbot');
-      if (urlChatbotId && chatbots.find(b => b.id === urlChatbotId)) {
-        selector.value = urlChatbotId;
-        selector.dispatchEvent(new Event('change'));
+      const targetChatbotId = urlChatbotId || previousSelection;
+      
+      if (targetChatbotId && chatbots.find(b => b.id === targetChatbotId)) {
+        selector.value = targetChatbotId;
+        // change 이벤트가 자동으로 발생하지 않으면 수동으로 발생
+        if (selector.value === targetChatbotId) {
+          selector.dispatchEvent(new Event('change'));
+        }
       }
     } catch(e) {
       addSystemMsg('챗봇 목록을 불러오지 못했습니다.');
