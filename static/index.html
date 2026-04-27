@@ -441,21 +441,31 @@
       
       // 기존 메시지 클리어 (시스템 메시지 제외)
       const existingMessages = chatContainer.querySelectorAll('.message:not(.system-msg)');
-      existingMessages.forEach(el => el.remove());
+      existingMessages.forEach(el => {
+        console.log('[Debug] 삭제할 메시지:', el.className, el.textContent.substring(0, 50));
+        el.remove();
+      });
+      
+      console.log('[Debug] 클리어 후 남은 메시지 수:', chatContainer.querySelectorAll('.message').length);
       
       // 시간순으로 정렬 (오래된 순)
       const sortedMessages = messages.sort((a, b) => 
         new Date(a.created_at) - new Date(b.created_at)
       );
       
+      console.log('[Debug] 렌더링할 메시지:', sortedMessages.length, '개');
+      
       // 메시지 렌더링
-      sortedMessages.forEach(msg => {
+      sortedMessages.forEach((msg, idx) => {
+        console.log(`[Debug] 메시지 ${idx}: role=${msg.role}, content=${msg.content?.substring(0, 30)}...`);
         if (msg.role === 'user') {
           addMessage('user', msg.content);
         } else if (msg.role === 'assistant') {
           addMessage('assistant', msg.content);
         }
       });
+      
+      console.log('[Debug] 렌더링 후 메시지 수:', chatContainer.querySelectorAll('.message').length);
       
       addSystemMsg(`이전 대화 ${messages.length}개 로드됨`);
     } catch(e) {
@@ -506,7 +516,15 @@
           if (selectedSessionId) {
             console.log('[Debug] 세션 선택됨:', selectedSessionId);
             sessionId = selectedSessionId;
-            chatContainer.innerHTML = '';
+            // 챗봇 ID도 업데이트 (세션에서 가져온 챗봇 ID로)
+            const selectedSession = sessions.find(s => s.session_id === selectedSessionId);
+            if (selectedSession && selectedSession.chatbot_id) {
+              selectedChatbotId = selectedSession.chatbot_id;
+              // 챗봇 선택기도 업데이트
+              if (selector.value !== selectedChatbotId) {
+                selector.value = selectedChatbotId;
+              }
+            }
             updateSessionInfo();
             loadChatHistory(sessionId);
           }
