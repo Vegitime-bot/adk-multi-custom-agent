@@ -1,12 +1,14 @@
 -- PostgreSQL Schema for ADK Multi Custom Agent Service
 -- Phase 1: Session and Message Management
+-- Note: Uses pgcrypto for UUID generation (more widely available than uuid-ossp)
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable pgcrypto extension (if not available, use Python-generated UUIDs)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Sessions table: 세션 메타데이터
+-- Using TEXT for session_id to allow both DB-generated and Python-generated UUIDs
 CREATE TABLE sessions (
-    session_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id TEXT PRIMARY KEY DEFAULT encode(gen_random_bytes(16), 'hex'),
     user_id TEXT NOT NULL,
     chatbot_id TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -18,7 +20,7 @@ CREATE TABLE sessions (
 -- Messages table: 메시지 본문
 CREATE TABLE messages (
     message_id SERIAL PRIMARY KEY,
-    session_id UUID REFERENCES sessions(session_id) ON DELETE CASCADE,
+    session_id TEXT REFERENCES sessions(session_id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
     content TEXT NOT NULL,
     tokens_used INTEGER DEFAULT 0,
@@ -31,7 +33,7 @@ CREATE TABLE messages (
 -- Delegation chains table: 위임 체인 추적
 CREATE TABLE delegation_chains (
     id SERIAL PRIMARY KEY,
-    session_id UUID REFERENCES sessions(session_id) ON DELETE CASCADE,
+    session_id TEXT REFERENCES sessions(session_id) ON DELETE CASCADE,
     parent_agent TEXT NOT NULL,
     child_agent TEXT NOT NULL,
     delegation_reason TEXT,

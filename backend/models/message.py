@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
 from backend.database.session import Base
@@ -17,8 +16,9 @@ class Message(Base):
     __tablename__ = 'messages'
     
     message_id = Column(Integer, primary_key=True, autoincrement=True)
+    # Using String instead of UUID for compatibility
     session_id = Column(
-        PG_UUID(as_uuid=True),
+        String(36),
         ForeignKey('sessions.session_id', ondelete='CASCADE'),
         nullable=False,
         index=True
@@ -38,7 +38,7 @@ class Message(Base):
         """Dictionary 변환"""
         return {
             "message_id": self.message_id,
-            "session_id": str(self.session_id),
+            "session_id": self.session_id,
             "role": self.role,
             "content": self.content,
             "tokens_used": self.tokens_used,

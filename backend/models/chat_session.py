@@ -3,10 +3,9 @@ backend/models/chat_session.py - ChatSession SQLAlchemy Model
 """
 from datetime import datetime
 from typing import List, Optional
-from uuid import uuid4, UUID
+from uuid import uuid4
 
 from sqlalchemy import Column, String, DateTime, Integer, func
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
 from backend.database.session import Base
@@ -17,7 +16,8 @@ class ChatSession(Base):
     
     __tablename__ = 'sessions'
     
-    session_id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    # Using String instead of UUID for compatibility with external UUID generators
+    session_id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id = Column(String(100), nullable=False, index=True)
     chatbot_id = Column(String(100), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=func.now())
@@ -50,7 +50,7 @@ class ChatSession(Base):
     def to_dict(self) -> dict:
         """Dictionary 변환"""
         return {
-            "session_id": str(self.session_id),
+            "session_id": self.session_id,
             "user_id": self.user_id,
             "chatbot_id": self.chatbot_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,

@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
 from backend.database.session import Base
@@ -17,8 +16,9 @@ class DelegationChain(Base):
     __tablename__ = 'delegation_chains'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
+    # Using String instead of UUID for compatibility
     session_id = Column(
-        PG_UUID(as_uuid=True),
+        String(36),
         ForeignKey('sessions.session_id', ondelete='CASCADE'),
         nullable=False,
         index=True
@@ -36,7 +36,7 @@ class DelegationChain(Base):
         """Dictionary 변환"""
         return {
             "id": self.id,
-            "session_id": str(self.session_id),
+            "session_id": self.session_id,
             "parent_agent": self.parent_agent,
             "child_agent": self.child_agent,
             "delegation_reason": self.delegation_reason,
