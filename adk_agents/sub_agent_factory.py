@@ -6,6 +6,10 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+# 프로젝트 루트 설정
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
 from backend.debug_logger import logger
 
 # ADK import
@@ -63,31 +67,30 @@ class SubAgentFactory:
             ADK Agent 인스턴스
         """
         chatbot_id = chatbot_def["id"]
+        # ADK Agent 이름은 유효한 식별자여야 함 (하이픈 -> 언더스코어)
+        agent_name = chatbot_id.replace("-", "_")
+        
+        # ADK Agent 이름은 유효한 식별자여야 함 (하이픈 -> 언더스코어)
+        agent_name = chatbot_id.replace("-", "_")
         
         # 캐시 확인
         if chatbot_id in self._agent_cache:
             return self._agent_cache[chatbot_id]
         
-        logger.info(f"[SubAgentFactory] Creating agent for {chatbot_id}")
+        logger.info(f"[SubAgentFactory] Creating agent for {chatbot_id} (name: {agent_name})")
         
         # 시스템 프롬프트 구성
         system_prompt = self._build_system_prompt(chatbot_def)
         
-        # 도구 설정 (하위 챗봇이 있을 경우 위임 도구 추가)
-        tools = []
-        if sub_agents:
-            # LLM에게 위임 결정을 맡기고, 실제 위임은 sub_agents로 처리
-            pass  # tools는 sub_agents가 있으면 자동으로 delegate
-        
         # Agent 생성 (sub_agents 없이 - 위임은 DelegationRouter에서 처리)
         agent = Agent(
-            name=chatbot_id,
+            name=agent_name,
             model=self.model,
             instruction=system_prompt,
             description=chatbot_def.get("description", ""),
         )
         
-        # 캐시 저장
+        # 캐시 저장 (원래 chatbot_id로)
         self._agent_cache[chatbot_id] = agent
         
         logger.info(f"[SubAgentFactory] Created agent {chatbot_id}")
@@ -149,7 +152,7 @@ class SubAgentFactory:
         """챗봇 정의 조회 (간략화된 버전)"""
         # TODO: ChatbotManager 연동
         # 임시: chatbots/ 디렉토리에서 JSON 로드
-        chatbots_dir = Path(__file__).parent.parent.parent / "chatbots"
+        chatbots_dir = PROJECT_ROOT / "chatbots"
         json_file = chatbots_dir / f"{chatbot_id}.json"
         
         if json_file.exists():

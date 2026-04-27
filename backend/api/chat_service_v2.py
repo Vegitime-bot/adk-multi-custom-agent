@@ -126,20 +126,25 @@ class ChatServiceV2:
             logger.error(f"[ChatServiceV2] Chat error: {e}", exc_info=True)
             yield sse_error(str(e))
     
-    def _get_chatbot(self, chatbot_id: str) -> Optional[Dict]:
-        """챗봇 정의 조회"""
+    def _get_chatbot(self, chatbot_id: str):
+        """챗봇 정의 조회 (ChatbotDef 또는 Dict 반환)"""
         if self.chatbot_manager:
             return self.chatbot_manager.get_active(chatbot_id)
         
         # Fallback: 직접 JSON 로드
         return self.router._load_chatbot_def(chatbot_id)
     
-    def _get_authorized_db_ids(self, chatbot: Dict, user_id: str) -> List[str]:
+    def _get_authorized_db_ids(self, chatbot, user_id: str) -> List[str]:
         """권한된 DB ID 목록"""
         # TODO: 실제 권한 체크 로직
         # 현재는 챗봇의 모든 DB 반환
-        capabilities = chatbot.get("capabilities", {})
-        return capabilities.get("db_ids", [])
+        if hasattr(chatbot, 'retrieval'):
+            # ChatbotDef 객체
+            return chatbot.retrieval.db_ids if chatbot.retrieval else []
+        else:
+            # Dict 객체 (fallback)
+            capabilities = chatbot.get("capabilities", {})
+            return capabilities.get("db_ids", [])
     
     def _save_conversation(
         self,

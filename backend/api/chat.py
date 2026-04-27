@@ -238,7 +238,7 @@ async def _chat_v2(b: ChatR, r: Request, u, cbm, sm, mm):
         service = get_chat_service_v2(
             chatbot_manager=cbm,
             memory_manager=mm,
-            conversation_repo=get_conversation_repository(r)
+            conversation_repo=get_conversation_repository()
         )
         
         # 스트리밍 응답
