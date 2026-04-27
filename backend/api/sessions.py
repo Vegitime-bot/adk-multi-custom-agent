@@ -1,18 +1,23 @@
 """
-backend/api/sessions.py - Session Management API
+backend/api/sessions.py - Session Management API (Mock Version)
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.orm import Session as DBSession
 
-from backend.database.session import get_db_session
-from backend.repository import (
-    PostgreSQLSessionRepository,
-    PostgreSQLMessageRepository
+# Mock Repository 사용 (PostgreSQL 없이 파일 기반)
+from backend.repository.mock_repository import (
+    MockSessionRepository,
+    MockMessageRepository,
+    MockDelegationRepository
 )
 
 router = APIRouter(tags=["sessions"])
+
+# 전역 Repository 인스턴스
+session_repo = MockSessionRepository()
+message_repo = MockMessageRepository()
+delegation_repo = MockDelegationRepository()
 
 
 # ── 스키마 ───────────────────────────────────────────────────────
@@ -30,9 +35,6 @@ class SessionResponse(BaseModel):
     updated_at: str
     last_accessed: str
     message_count: int
-
-    class Config:
-        from_attributes = True
 
 
 class SessionListResponse(BaseModel):
@@ -52,9 +54,6 @@ class MessageResponse(BaseModel):
     delegated_to: Optional[str]
     created_at: str
 
-    class Config:
-        from_attributes = True
-
 
 class MessageListResponse(BaseModel):
     messages: List[MessageResponse]
@@ -65,52 +64,28 @@ class MessageListResponse(BaseModel):
 
 # ── API 엔드포인트 ────────────────────────────────────────────────
 @router.post("/api/sessions", response_model=SessionResponse)
-async def create_session(
-    request: SessionCreateRequest,
-    db: DBSession = Depends(get_db_session)
-):
+async def create_session(request: SessionCreateRequest):
     """새 세션 생성"""
-    repo = PostgreSQLSessionRepository(db)
-    session = repo.create(
+    session = session_repo.create(
         user_id=request.user_id,
         chatbot_id=request.chatbot_id,
         session_id=request.session_id
     )
-    return SessionResponse(
-        session_id=str(session.session_id),
-        user_id=session.user_id,
-        chatbot_id=session.chatbot_id,
-        created_at=session.created_at.isoformat(),
-        updated_at=session.updated_at.isoformat(),
-        last_accessed=session.last_accessed.isoformat(),
-        message_count=session.message_count
-    )
+    return SessionResponse(**session)
 
 
 @router.get("/api/sessions", response_model=SessionListResponse)
 async def list_sessions(
     user_id: str,
     limit: int = Query(default=30, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    db: DBSession = Depends(get_db_session)
+    offset: int = Query(default=0, ge=0)
 ):
     """사용자별 세션 목록 조회 (페이지네이션)"""
-    repo = PostgreSQLSessionRepository(db)
-    sessions = repo.list_by_user(user_id, limit, offset)
-    total = repo.get_user_session_count(user_id)
+    sessions = session_repo.list_by_user(user_id, limit, offset)
+    total = session_repo.get_user_session_count(user_id)
     
     return SessionListResponse(
-        sessions=[
-            SessionResponse(
-                session_id=str(s.session_id),
-                user_id=s.user_id,
-                chatbot_id=s.chatbot_id,
-                created_at=s.created_at.isoformat(),
-                updated_at=s.updated_at.isoformat(),
-                last_accessed=s.last_accessed.isoformat(),
-                message_count=s.message_count
-            ) for s in sessions
-        ],
+        sessions=[SessionResponse(**s) for s in sessions],
         total=total,
         limit=limit,
         offset=offset
@@ -118,63 +93,34 @@ async def list_sessions(
 
 
 @router.get("/api/sessions/{session_id}", response_model=SessionResponse)
-async def get_session(
-    session_id: str,
-    db: DBSession = Depends(get_db_session)
-):
+async def get_session(session_id: str):
     """세션 상세 조회"""
-    repo = PostgreSQLSessionRepository(db)
-    session = repo.get_by_id(session_id)
+    session = session_repo.get_by_id(session_id)
     
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # last_accessed 업데이트
-    repo.update_last_accessed(session_id)
-    
-    return SessionResponse(
-        session_id=str(session.session_id),
-        user_id=session.user_id,
-        chatbot_id=session.chatbot_id,
-        created_at=session.created_at.isoformat(),
-        updated_at=session.updated_at.isoformat(),
-        last_accessed=session.last_accessed.isoformat(),
-        message_count=session.message_count
-    )
+    return SessionResponse(**session)
 
 
 @router.get("/api/sessions/{session_id}/messages", response_model=MessageListResponse)
 async def get_session_messages(
     session_id: str,
     limit: int = Query(default=30, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    db: DBSession = Depends(get_db_session)
+    offset: int = Query(default=0, ge=0)
 ):
     """세션별 메시지 조회 (페이지네이션)"""
     # 세션 존재 확인
-    session_repo = PostgreSQLSessionRepository(db)
     session = session_repo.get_by_id(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
     # 메시지 조회
-    message_repo = PostgreSQLMessageRepository(db)
     messages = message_repo.get_by_session(session_id, limit, offset)
     total = message_repo.get_message_count(session_id)
     
     return MessageListResponse(
-        messages=[
-            MessageResponse(
-                message_id=m.message_id,
-                role=m.role,
-                content=m.content,
-                tokens_used=m.tokens_used,
-                latency_ms=m.latency_ms,
-                confidence_score=m.confidence_score,
-                delegated_to=m.delegated_to,
-                created_at=m.created_at.isoformat()
-            ) for m in messages
-        ],
+        messages=[MessageResponse(**m) for m in messages],
         total=total,
         limit=limit,
         offset=offset
@@ -182,35 +128,35 @@ async def get_session_messages(
 
 
 @router.delete("/api/sessions/{session_id}")
-async def delete_session(
-    session_id: str,
-    db: DBSession = Depends(get_db_session)
-):
+async def delete_session(session_id: str):
     """세션 삭제 (관련 메시지, 위임 체인도 함께 삭제)"""
-    from backend.models.chat_session import ChatSession
-    from uuid import UUID
+    import os
+    from pathlib import Path
     
-    session = db.query(ChatSession).filter(
-        ChatSession.session_id == UUID(session_id)
-    ).first()
-    
+    session = session_repo.get_by_id(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    db.delete(session)
-    db.commit()
+    # 세션 데이터 로드
+    from backend.repository.mock_repository import _load_sessions, _save_sessions, DATA_DIR
+    
+    sessions = _load_sessions()
+    if session_id in sessions:
+        del sessions[session_id]
+        _save_sessions(sessions)
+    
+    # 메시지 파일 삭제
+    msg_file = DATA_DIR / "messages" / f"{session_id}.json"
+    if msg_file.exists():
+        msg_file.unlink()
     
     return {"status": "success", "message": f"Session {session_id} deleted"}
 
 
 @router.post("/api/admin/cleanup-sessions")
-async def cleanup_old_sessions(
-    days: int = Query(default=30, ge=1),
-    db: DBSession = Depends(get_db_session)
-):
+async def cleanup_old_sessions(days: int = Query(default=30, ge=1)):
     """오래된 세션 정리 (관리자용)"""
-    repo = PostgreSQLSessionRepository(db)
-    deleted_count = repo.delete_old_sessions(days)
+    deleted_count = session_repo.delete_old_sessions(days)
     
     return {
         "status": "success",

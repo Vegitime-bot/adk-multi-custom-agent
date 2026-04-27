@@ -1,5 +1,5 @@
 """
-backend/api/chat_service.py - 채팅 비즈니스 로직 서비스
+backend/api/chat_service.py - 채팅 비즈니스 로직 서비스 (Mock Version)
 """
 from __future__ import annotations
 
@@ -17,24 +17,13 @@ from backend.conversation.repository import (
     MockConversationRepository,
 )
 from backend.api.utils.sse_utils import sse_event, sse_done, sse_error
-from backend.api.middleware.auth_middleware import (
-    get_user_permissions,
-    check_chatbot_access,
-    check_mode_permission,
-)
-from backend.api.utils.chat_utils import (
-    resolve_execution_mode,
-    create_executor,
-)
 
-# PostgreSQL Repository import
-try:
-    from backend.repository import PostgreSQLMessageRepository, PostgreSQLDelegationRepository
-    from backend.database.session import get_db_context
-    USE_POSTGRES = True
-except ImportError:
-    USE_POSTGRES = False
-
+# Mock Repository 사용
+from backend.repository.mock_repository import (
+    MockSessionRepository,
+    MockMessageRepository,
+    MockDelegationRepository
+)
 
 
 class ChatService:
@@ -42,6 +31,9 @@ class ChatService:
 
     def __init__(self):
         self.conv_repo = MockConversationRepository()
+        self.session_repo = MockSessionRepository()
+        self.message_repo = MockMessageRepository()
+        self.delegation_repo = MockDelegationRepository()
 
     async def stream_chat_response(
         self,
@@ -58,21 +50,6 @@ class ChatService:
     ) -> AsyncGenerator[str, None]:
         """
         채팅 응답을 SSE 스트림으로 생성
-
-        Args:
-            chatbot_id: 챗봇 ID
-            message: 사용자 메시지
-            session_id: 세션 ID
-            mode: 실행 모드
-            user: 사용자 정보
-            executor: 실행기
-            chatbot_mgr: 챗봇 관리자
-            session_mgr: 세션 관리자
-            memory_mgr: 메모리 관리자
-            multi_sub_execution: 하위 챗봇 다중 실행 여부
-
-        Yields:
-            str: SSE 이벤트 문자열
         """
         start_time = time.time()
         request_id = f"{int(start_time * 1000)}"
@@ -116,7 +93,7 @@ class ChatService:
 
         yield sse_done()
 
-        # 대화 기록 저장
+        # 대화 기록 저장 (Mock 저장소에)
         await self._save_conversation_log(
             request_id=request_id,
             session_id=session_id,
@@ -130,9 +107,6 @@ class ChatService:
             confidence_score=confidence_score,
             delegated_to=delegated_to,
         )
-
-        total_elapsed = time.time() - start_time
-        logger.info(f"[Chat {request_id}] ========== 완료 ({total_elapsed:.1f}s) ==========")
 
     async def _save_conversation_log(
         self,
@@ -148,12 +122,12 @@ class ChatService:
         confidence_score: Optional[float],
         delegated_to: Optional[str],
     ):
-        """대화 기록 저장 (PostgreSQL + 기존 저장소)"""
+        """대화 기록 저장 (Mock 저장소)"""
         knox_id = user.get("knox_id", "unknown")
         response_text = "".join(full_response)
         tokens = chunk_count * 4  # Approximate
         latency_ms = int(llm_elapsed * 1000)
-        
+
         # 1. 기존 저장소에 저장
         try:
             conv_log = ConversationLog(
@@ -173,39 +147,35 @@ class ChatService:
             self.conv_repo.save(conv_log)
         except Exception as e:
             logger.error(f"[Chat {request_id}] 기존 저장소 저장 실패: {e}")
-        
-        # 2. PostgreSQL에 저장 (사용자 메시지 + 어시스턴트 응답)
-        if USE_POSTGRES:
-            try:
-                with get_db_context() as db:
-                    msg_repo = PostgreSQLMessageRepository(db)
-                    
-                    # 사용자 메시지 저장
-                    msg_repo.create(
-                        session_id=session_id,
-                        role='user',
-                        content=message,
-                        tokens_used=len(message.split()),  # 단어 수로 근사
-                        latency_ms=0,
-                        confidence_score=None,
-                        delegated_to=None
-                    )
-                    
-                    # 어시스턴트 응답 저장
-                    msg_repo.create(
-                        session_id=session_id,
-                        role='assistant',
-                        content=response_text,
-                        tokens_used=tokens,
-                        latency_ms=latency_ms,
-                        confidence_score=confidence_score,
-                        delegated_to=delegated_to
-                    )
-                    
-                    logger.info(f"[Chat {request_id}] PostgreSQL 저장 완료")
-            except Exception as e:
-                logger.error(f"[Chat {request_id}] PostgreSQL 저장 실패: {e}")
-        
+
+        # 2. Mock PostgreSQL 저장소에 저장
+        try:
+            # 사용자 메시지 저장
+            self.message_repo.create(
+                session_id=session_id,
+                role='user',
+                content=message,
+                tokens_used=len(message.split()),
+                latency_ms=0,
+                confidence_score=None,
+                delegated_to=None
+            )
+
+            # 어시스턴트 응답 저장
+            self.message_repo.create(
+                session_id=session_id,
+                role='assistant',
+                content=response_text,
+                tokens_used=tokens,
+                latency_ms=latency_ms,
+                confidence_score=confidence_score,
+                delegated_to=delegated_to
+            )
+
+            logger.info(f"[Chat {request_id}] Mock 저장소 저장 완료")
+        except Exception as e:
+            logger.error(f"[Chat {request_id}] Mock 저장소 저장 실패: {e}")
+
         logger.info(f"[Chat {request_id}] 대화 기록 저장 완료")
 
     async def stream_tool_response(
