@@ -15,6 +15,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.debug_logger import logger
 from backend.core.models import ChatSession, Message, ExecutionRole
+from backend.conversation.repository import ConversationLog
 from backend.api.utils.sse_utils import sse_event, sse_done, sse_error
 
 try:
@@ -168,16 +169,22 @@ class ChatServiceV2:
             
             # ConversationRepository 저장
             if self.conversation_repo:
-                self.conversation_repo.save_log(
-                    chatbot_id=chatbot_id,
+                from datetime import datetime
+                log = ConversationLog(
+                    id=0,  # DB에서 auto-increment
                     session_id=session_id,
-                    user_id=user_id,
-                    messages=[
-                        {"role": "user", "content": user_message},
-                        {"role": "assistant", "content": assistant_response}
-                    ],
-                    metadata={"duration_ms": duration_ms}
+                    knox_id=user_id,
+                    chatbot_id=chatbot_id,
+                    user_message=user_message,
+                    assistant_response=assistant_response,
+                    tokens_used=len(user_message) + len(assistant_response),
+                    latency_ms=duration_ms,
+                    search_results_count=0,
+                    confidence_score=0.0,
+                    delegated_to=None,
+                    created_at=datetime.now()
                 )
+                self.conversation_repo.save(log)
             
             logger.info(f"[ChatServiceV2] Conversation saved: {session_id}")
             
