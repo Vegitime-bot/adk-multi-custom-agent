@@ -4,7 +4,7 @@ ADK Web UI Test Agent - Multi Custom Agent Service
 
 import os
 from google.adk.agents import Agent
-from google.adk.models import OpenAIModel
+from google.adk.models.lite_llm import LiteLlm
 
 # 환경에 따른 모델 설정
 # DEVELOPMENT=true (Mac 개발환경): Ollama 사용
@@ -13,16 +13,16 @@ IS_DEVELOPMENT = os.getenv("DEVELOPMENT", "false").lower() == "true"
 
 if IS_DEVELOPMENT:
     # 개발환경: Ollama (Kimi-k2.5 등 로컬 모델)
-    model = OpenAIModel(
-        model=os.getenv("OLLAMA_MODEL", "kimi-k2.5"),
-        base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+    model = LiteLlm(
+        model=f"openai/{os.getenv('OLLAMA_MODEL', 'kimi-k2.5')}",
+        api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
         api_key=os.getenv("OLLAMA_API_KEY", "dummy-key")
     )
 else:
     # 사내환경: 사내 LLM Gateway (OpenAI compatible)
-    model = OpenAIModel(
-        model=os.getenv("LLM_MODEL", "GLM4.7"),
-        base_url=os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:11434/v1"),
+    model = LiteLlm(
+        model=f"openai/{os.getenv('LLM_MODEL', 'GLM4.7')}",
+        api_base=os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:11434/v1"),
         api_key=os.getenv("LLM_API_KEY", "")
     )
 
