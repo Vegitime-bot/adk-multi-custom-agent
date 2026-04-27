@@ -1,5 +1,6 @@
 """backend/api/chat.py - ADK 기반 채팅 API"""
 import time
+import os
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -9,6 +10,17 @@ from backend.api.utils import chat_utils as cu
 from backend.api.middleware import auth_middleware as auth
 from backend.api.chat_service_adk import get_adk_chat_service
 from backend.core.models import ExecutionRole
+from backend.debug_logger import logger
+
+# ChatServiceV2 import (JSON 기반 계층 구조)
+USE_V2 = os.getenv("USE_CHAT_SERVICE_V2", "false").lower() == "true"
+if USE_V2:
+    try:
+        from backend.api.chat_service_v2 import get_chat_service_v2
+        logger.info("[ChatAPI] Using ChatServiceV2 (JSON + ADK hierarchy)")
+    except ImportError as e:
+        USE_V2 = False
+        logger.warning(f"[ChatAPI] ChatServiceV2 not available: {e}")
 
 router = APIRouter(prefix="/api", tags=["chat"])
 SR = StreamingResponse
@@ -96,10 +108,12 @@ def create_session(b: SessionR, r: Request):
 async def chat(b: ChatR, r: Request):
     """
     ADK 기반 채팅 엔드포인트
+    
+    ChatServiceV2 사용 시: JSON 기반 계층 구조 + ADK sub_agents
+    USE_CHAT_SERVICE_V2=true 환경변수로 활성화
     """
     u = auth.get_current_user(r)
     cbm, sm, mm, ic = _d(r)
-    sv = get_adk_chat_service()
     
     cb = cbm.get_active(b.chatbot_id)
     if not cb:
@@ -108,6 +122,14 @@ async def chat(b: ChatR, r: Request):
     ss = sm.get_or_create(b.chatbot_id, u["knox_id"], b.session_id)
     md = cu.resolve_execution_mode(cb, ss, b.mode)
     _chk(auth.get_user_permissions(u), b.chatbot_id, md.value)
+    
+    # ChatServiceV2 사용 여부
+    if USE_V2:
+        logger.info(f"[ChatAPI] Using V2 for {b.chatbot_id}")
+        return await _chat_v2(b, r, u, cbm, sm, mm)
+    
+    # 기존 V1 방식
+    sv = get_adk_chat_service()
     
     async def generate():
         async for event in sv.stream_chat_response(
@@ -205,5 +227,35 @@ def close_session(sid: str, r: Request):
     auth.get_current_user(r)
     sm, mm = _d(r)[1], _d(r)[2]
     mm.clear_all_for_session(sid)
+
+
+# V2 Helper Functions
+async def _chat_v2(b: ChatR, r: Request, u, cbm, sm, mm):
+    """ChatServiceV2 (JSON 기반 계층 구조 + ADK sub_agents)"""
+    from backend.conversation.repository import get_conversation_repository
+    
+    try:
+        service = get_chat_service_v2(
+            chatbot_manager=cbm,
+            memory_manager=mm,
+            conversation_repo=get_conversation_repository(r)
+        )
+        
+        # 스트리밍 응답
+        return SR(
+            service.chat_stream(
+                chatbot_id=b.chatbot_id,
+                message=b.message,
+                session_id=b.session_id or f"v2-{b.chatbot_id}-{int(time.time()*1000)}",
+                user_id=u["knox_id"],
+                mode=b.mode
+            ),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+        )
+        
+    except Exception as e:
+        logger.error(f"[ChatV2] Error: {e}", exc_info=True)
+        raise HTTPException(500, f"Chat service error: {str(e)}")
     sm.close_session(sid)
     return {"message": f"세션 {sid} 종료"}
