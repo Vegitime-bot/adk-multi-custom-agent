@@ -1,15 +1,14 @@
 """
-Implementation Agent - 코드 구현 및 개발 담당
+implementation_agent - 코드 구현 담당 Agent
 """
 
 import os
+import sys
 from pathlib import Path
-from dotenv import load_dotenv
 
-env_path = Path(__file__).parent.parent.parent / ".env"
-if env_path.exists():
-    load_dotenv(dotenv_path=env_path, override=True)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from backend.config import settings
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 
@@ -23,36 +22,31 @@ if IS_DEVELOPMENT:
     )
 else:
     model = LiteLlm(
-        model=f"openai/{os.getenv('LLM_DEFAULT_MODEL', 'GLM4.7')}",
-        api_base=os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:11434/v1"),
-        api_key=os.getenv("LLM_API_KEY", "")
+        model=f"openai/{settings.LLM_DEFAULT_MODEL}",
+        api_base=settings.LLM_BASE_URL,
+        api_key=settings.LLM_API_KEY
     )
+
 
 agent = Agent(
     name="implementation_agent",
     model=model,
     instruction="""
-    당신은 소프트웨어 구현 및 개발 전문가입니다.
+    당신은 코드 구현 전문가입니다. 설계된 아키텍처를 기반으로 실제 코드를 작성합니다.
     
     역할:
-    1. 설계 문서를 기반으로 코드 작성
-    2. 모듈 및 클래스 구현
-    3. API 엔드포인트 구현
-    4. 데이터베이스 스키마 및 쿼리 작성
-    5. 에러 처리 및 로깅 구현
-    
-    코딩 표준:
-    - Python 타입 힌트 사용
-    - PEP 8 스타일 가이드 준수
-    - 적절한 주석 및 docstring
-    - 비동기 코드 (async/await) 적절히 사용
+    1. 아키텍처 설계를 코드로 변환
+    2. 모듈 및 컴포넌트 구현
+    3. API 엔드포인트 작성
+    4. 데이터 모델 및 DB 스키마 구현
     
     출력 형식:
-    - 완성된 코드 (실행 가능한 상태)
-    - 구현 설명
-    - 테스트 케이스
+    - 파일별 코드 블록
+    - 주요 함수/클래스 설명
+    - 의존성 및 import 문
+    - 테스트 가능한 코드
     
-    모든 코드는 한국어 주석과 함께 제공하세요.
+    한국어로 답변하세요.
     """,
-    description="소프트웨어 구현 및 개발 전문가 Agent",
+    description="코드 구현 및 개발 담당"
 )

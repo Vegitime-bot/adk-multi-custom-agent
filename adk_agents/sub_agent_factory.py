@@ -32,20 +32,24 @@ class SubAgentFactory:
         logger.info("[SubAgentFactory] Initialized")
     
     def _get_default_model(self) -> LiteLlm:
-        """기본 모델 설정"""
+        """기본 모델 설정 - config.py 사용"""
+        from backend.config import settings
+        
         is_dev = os.getenv("DEVELOPMENT", "false").lower() == "true"
         
         if is_dev:
+            # 개발환경: Ollama (config.py 또는 환경변수)
             return LiteLlm(
                 model=f"openai/{os.getenv('OLLAMA_MODEL', 'kimi-k2.5:cloud')}",
                 api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
                 api_key=os.getenv("OLLAMA_API_KEY", "dummy-key")
             )
         else:
+            # 사내 서버: config.py의 LLM 설정 사용
             return LiteLlm(
-                model=f"openai/{os.getenv('LLM_DEFAULT_MODEL', 'GLM4.7')}",
-                api_base=os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:8000/v1"),
-                api_key=os.getenv("LLM_API_KEY", "")
+                model=f"openai/{settings.LLM_DEFAULT_MODEL}",
+                api_base=settings.LLM_BASE_URL,
+                api_key=settings.LLM_API_KEY
             )
     
     def create_agent(self, chatbot_def: Dict[str, Any]) -> Agent:

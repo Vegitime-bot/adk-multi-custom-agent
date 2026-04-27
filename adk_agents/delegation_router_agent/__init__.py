@@ -1,10 +1,5 @@
 """
 DelegationRouterAgent - JSON 기반 계층 구조의 중앙 라우터
-
-특징:
-- ChatbotManager와 연동하여 JSON 정의 로드
-- SubAgentFactory로 ADK Agent 생성
-- SSE 스트리밍 지원
 """
 import os
 import sys
@@ -17,6 +12,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.debug_logger import logger
+from backend.config import settings
 
 # ADK import
 try:
@@ -32,8 +28,8 @@ except ImportError as e:
 
 from adk_agents.sub_agent_factory import SubAgentFactory
 from adk_agents.tools.delegation_tools import (
-    calculate_confidence, 
-    select_sub_chatbot, 
+    calculate_confidence,
+    select_sub_chatbot,
     extract_keywords,
     DelegationContext
 )
@@ -48,31 +44,26 @@ if IS_DEVELOPMENT:
         api_key=os.getenv("OLLAMA_API_KEY", "dummy-key")
     )
 else:
+    # 사내 서버: config.py 설정 사용
     model = LiteLlm(
-        model=f"openai/{os.getenv('LLM_DEFAULT_MODEL', 'GLM4.7')}",
-        api_base=os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:8000/v1"),
-        api_key=os.getenv("LLM_API_KEY", "")
+        model=f"openai/{settings.LLM_DEFAULT_MODEL}",
+        api_base=settings.LLM_BASE_URL,
+        api_key=settings.LLM_API_KEY
     )
 
 
 class DelegationRouter:
     """
     JSON 챗봇 계층 구조의 중앙 라우터
-    
-    챗봇 ID와 메시지를 받아:
-    1. 적절한 ADK Agent 선택/생성
-    2. RAG 검색 및 신뢰도 계산
-    3. 위임 결정
-    4. SSE 스트리밍 응답 반환
     """
-    
+
     def __init__(self):
         if not ADK_AVAILABLE:
             raise RuntimeError("ADK not available")
-        
+
         self.factory = SubAgentFactory(model=model)
         self.session_service = InMemorySessionService()
-        
+
         # IngestionClient (RAG 검색)
         try:
             from backend.retrieval.ingestion_client import get_ingestion_client
@@ -80,9 +71,9 @@ class DelegationRouter:
         except Exception as e:
             logger.warning(f"[DelegationRouter] IngestionClient not available: {e}")
             self.ingestion_client = None
-        
+
         logger.info("[DelegationRouter] Initialized")
-    
+
     async def route_and_stream(
         self,
         chatbot_id: str,
@@ -92,40 +83,26 @@ class DelegationRouter:
         db_ids: Optional[List[str]] = None,
         history: Optional[List[Dict]] = None
     ) -> AsyncGenerator[str, None]:
-        """
-        라우팅 및 SSE 스트리밍
-        
-        Args:
-            chatbot_id: 챗봇 ID
-            message: 사용자 메시지
-            session_id: 세션 ID
-            user_id: 사용자 ID
-            db_ids: RAG 검색할 DB ID 목록
-            history: 대화 히스토리
-            
-        Yields:
-            SSE 형식 문자열 (data: {...}\n\n)
-        """
+        """라우팅 및 SSE 스트리밍"""
         try:
             # 1. 챗봇 정의 로드
             chatbot_def = self._load_chatbot_def(chatbot_id)
             if not chatbot_def:
                 yield self._sse_error(f"Chatbot not found: {chatbot_id}")
                 return
-            
-            # 2. RAG 검색 (신뢰도 계산용)
+
+            # 2. RAG 검색
             rag_results = []
             if self.ingestion_client and db_ids:
                 try:
                     rag_results = await self._search_rag(message, db_ids)
-                    logger.info(f"[DelegationRouter] RAG results: {len(rag_results)} items")
                 except Exception as e:
                     logger.warning(f"[DelegationRouter] RAG search failed: {e}")
-            
+
             # 3. 신뢰도 계산
             confidence = calculate_confidence(rag_results)
             sub_chatbots = chatbot_def.get("sub_chatbots", [])
-            
+
             # 4. 위임 결정
             delegation_ctx = DelegationContext(
                 chatbot_id=chatbot_id,
@@ -135,14 +112,14 @@ class DelegationRouter:
                 sub_chatbots=sub_chatbots,
                 parent_id=chatbot_def.get("parent_id")
             )
-            
+
             # 5. 적절한 Agent 선택
             target_agent = self._select_target_agent(
-                chatbot_def, 
+                chatbot_def,
                 delegation_ctx,
                 rag_results
             )
-            
+
             # 6. Runner 실행 및 스트리밍
             async for chunk in self._execute_agent_stream(
                 agent=target_agent,
@@ -153,25 +130,23 @@ class DelegationRouter:
                 confidence=confidence
             ):
                 yield chunk
-                
+
         except Exception as e:
             logger.error(f"[DelegationRouter] Route error: {e}", exc_info=True)
             yield self._sse_error(str(e))
-    
+
     def _load_chatbot_def(self, chatbot_id: str) -> Optional[Dict[str, Any]]:
         """챗봇 정의 로드"""
-        # SubAgentFactory의 메서드 활용
         return self.factory._get_chatbot_def(chatbot_id)
-    
+
     async def _search_rag(self, query: str, db_ids: List[str]) -> List[Dict]:
         """RAG 검색"""
         if not self.ingestion_client:
             return []
-        
+
         results = []
         for db_id in db_ids:
             try:
-                # IngestionClient 검색 호출 (간략화)
                 search_results = await self.ingestion_client.search_async(
                     db_id=db_id,
                     query=query,
@@ -180,9 +155,9 @@ class DelegationRouter:
                 results.extend(search_results)
             except Exception as e:
                 logger.warning(f"[DelegationRouter] Search failed for {db_id}: {e}")
-        
+
         return results
-    
+
     def _select_target_agent(
         self,
         chatbot_def: Dict[str, Any],
@@ -190,29 +165,23 @@ class DelegationRouter:
         rag_results: List[Dict]
     ) -> Agent:
         """위임 결정 및 대상 Agent 선택"""
-        
-        # 캐시된 Agent 확인
         chatbot_id = chatbot_def["id"]
-        
-        # Leaf 챗봉이거나 직접 응답 가능한 경우
+
         if not delegation_ctx.should_delegate:
-            logger.info(f"[DelegationRouter] Direct response from {chatbot_id} (confidence: {delegation_ctx.confidence}%)")
+            logger.info(f"[DelegationRouter] Direct response from {chatbot_id}")
             return self.factory.create_agent(chatbot_def)
-        
-        # 하위 챗봇으로 위임
+
         if delegation_ctx.selected_sub:
             sub_id = delegation_ctx.selected_sub["id"]
             logger.info(f"[DelegationRouter] Delegating {chatbot_id} -> {sub_id}")
-            
-            # 하위 챗봇 정의 로드
+
             sub_def = self._load_chatbot_def(sub_id)
             if sub_def:
                 return self.factory.create_agent(sub_def)
-        
-        # 위임 실패 시 원래 챗봇으로 fallback
+
         logger.warning(f"[DelegationRouter] Delegation failed, fallback to {chatbot_id}")
         return self.factory.create_agent(chatbot_def)
-    
+
     async def _execute_agent_stream(
         self,
         agent: Agent,
@@ -223,26 +192,22 @@ class DelegationRouter:
         confidence: float
     ) -> AsyncGenerator[str, None]:
         """Agent 실행 및 스트리밍"""
-        
-        # 세션 생성
+
         session = await self.session_service.create_session(
             app_name="delegation-router",
             user_id=user_id,
             session_id=session_id
         )
-        
-        # Runner 생성
+
         runner = Runner(
             agent=agent,
             app_name="delegation-router",
             session_service=self.session_service
         )
-        
-        # 컨텍스트가 포함된 메시지 구성
+
         context_prompt = self._build_context_prompt(message, rag_context, confidence)
         content = types.Content(role='user', parts=[types.Part(text=context_prompt)])
-        
-        # 스트리밍 실행
+
         full_response = []
         async for event in runner.run_async(
             user_id=user_id,
@@ -255,10 +220,9 @@ class DelegationRouter:
                         chunk = part.text
                         full_response.append(chunk)
                         yield self._sse_data(chunk)
-        
-        # 완료 이벤트
+
         yield self._sse_done("".join(full_response))
-    
+
     def _build_context_prompt(
         self,
         message: str,
@@ -268,26 +232,26 @@ class DelegationRouter:
         """컨텍스트가 포함된 프롬프트 구성"""
         if not rag_results:
             return message
-        
+
         context_parts = ["[참고 문서]"]
-        for i, result in enumerate(rag_results[:3], 1):  # 상위 3개만
-            content = result.get("content", "")[:200]  # 200자 제한
+        for i, result in enumerate(rag_results[:3], 1):
+            content = result.get("content", "")[:200]
             score = result.get("score", 0)
             context_parts.append(f"{i}. (유사도: {score:.2f}) {content}...")
-        
+
         context_parts.append(f"\n[신뢰도: {confidence:.1f}%]")
         context_parts.append(f"\n[사용자 질문]\n{message}")
-        
+
         return "\n".join(context_parts)
-    
+
     def _sse_data(self, data: str) -> str:
         """SSE 데이터 이벤트 포맷"""
         return f"data: {json.dumps({'chunk': data}, ensure_ascii=False)}\n\n"
-    
+
     def _sse_error(self, error: str) -> str:
         """SSE 에러 이벤트 포맷"""
         return f"data: {json.dumps({'error': error}, ensure_ascii=False)}\n\n"
-    
+
     def _sse_done(self, full_response: str) -> str:
         """SSE 완료 이벤트 포맷"""
         return f"data: {json.dumps({'done': True, 'response': full_response}, ensure_ascii=False)}\n\n"
@@ -311,7 +275,7 @@ agent = Agent(
     model=model,
     instruction="""
     JSON 기반 챗봇 계층 구조의 중앙 라우터입니다.
-    
+
     다른 코드에서 DelegationRouter 클래스를 직접 인스턴스화하여 사용하세요.
     이 agent는 식별자/문서화용입니다.
     """
