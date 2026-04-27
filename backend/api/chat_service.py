@@ -75,8 +75,8 @@ class ADKChatService:
             # adk_agents에서 해당 챗봇 모듈 로드 시도
             module_name = f"{chatbot_id}_adk" if not chatbot_id.endswith("_adk") else chatbot_id
             try:
-                module = __import__(module_name, fromlist=['root_agent'])
-                agent = module.root_agent
+                module = __import__(module_name, fromlist=['agent'])
+                agent = module.agent
                 logger.info(f"[ADKChatService] Loaded agent from {module_name}")
             except ImportError:
                 # 모듈이 없으면 기본 에이전트 생성

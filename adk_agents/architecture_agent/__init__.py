@@ -28,7 +28,7 @@ else:
         api_key=os.getenv("LLM_API_KEY", "")
     )
 
-root_agent = Agent(
+agent = Agent(
     name="architecture_agent",
     model=model,
     instruction="""

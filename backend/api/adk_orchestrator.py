@@ -73,8 +73,8 @@ class ADKWorkflowOrchestrator:
         
         for module_name, agent_key in agent_modules:
             try:
-                module = __import__(module_name, fromlist=['root_agent'])
-                self._agents[agent_key] = module.root_agent
+                module = __import__(module_name, fromlist=['agent'])
+                self._agents[agent_key] = module.agent
                 logger.info(f"[ADKWorkflowOrchestrator] Loaded {agent_key}")
             except Exception as e:
                 logger.error(f"[ADKWorkflowOrchestrator] Failed to load {agent_key}: {e}")

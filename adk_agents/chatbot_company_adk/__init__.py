@@ -47,7 +47,7 @@ else:
         api_key=api_key
     )
 
-root_agent = Agent(
+agent = Agent(
     name="chatbot_company_adk",
     model=model,
     instruction="""
