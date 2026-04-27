@@ -27,7 +27,7 @@ print(f"[DEBUG chatbot_company_adk] LLM_BASE_URL={os.getenv('LLM_BASE_URL')}")
 if IS_DEVELOPMENT:
     # 개발환경: Ollama (Kimi-k2.5 등 로컬 모델)
     model = LiteLlm(
-        model=f"openai/{os.getenv('OLLAMA_MODEL', 'kimi-k2.5')}",
+        model=f"openai/{os.getenv('OLLAMA_MODEL', 'kimi-k2.5:cloud')}",
         api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
         api_key=os.getenv("OLLAMA_API_KEY", "dummy-key")
     )

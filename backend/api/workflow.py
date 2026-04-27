@@ -28,77 +28,72 @@ class WorkflowPhaseResponse(BaseModel):
 class WorkflowResponse(BaseModel):
     workflow_id: str
     phases: List[WorkflowPhaseResponse]
-    overall_status: str
+    status: str
 
 
-@router.post("/run", response_model=WorkflowResponse)
-async def run_workflow(request: WorkflowRequest, r: Request):
+@router.post("/run")
+async def run_workflow(request: WorkflowRequest):
     """
-    3단계 Agent 워크플로우 실행
+    3단계 워크플로우 실행 (비동기)
     
-    - Phase 1: Architecture (설계)
-    - Phase 2: Implementation (구현)
-    - Phase 3: Validation (검증)
+    Architecture → Implementation → Validation
     """
-    auth.get_current_user(r)
-    
     try:
-        orchestrator = get_orchestrator()
+        orch = get_orchestrator()
         
-        phases = []
-        async for result in orchestrator.run_workflow(
+        results = []
+        async for result in orch.run_workflow(
             task=request.task,
             context=request.context,
             session_id=request.session_id
         ):
-            phases.append(WorkflowPhaseResponse(
-                phase=result.phase,
-                agent_name=result.agent_name,
-                output=result.output,
-                status=result.status,
-                duration_ms=result.duration_ms
-            ))
+            results.append(result)
         
-        # 전체 상태 결정
-        overall_status = "success"
-        if any(p.status == "error" for p in phases):
-            overall_status = "partial_failure"
-        if all(p.status == "error" for p in phases):
-            overall_status = "failure"
-        
-        return WorkflowResponse(
-            workflow_id=request.session_id or "auto-generated",
-            phases=phases,
-            overall_status=overall_status
-        )
+        return {
+            "workflow_id": request.session_id or "sync-workflow",
+            "phases": [
+                {
+                    "phase": r.phase,
+                    "agent_name": r.agent_name,
+                    "output": r.output,
+                    "status": r.status,
+                    "duration_ms": r.duration_ms
+                }
+                for r in results
+            ],
+            "status": "completed"
+        }
         
     except Exception as e:
-        logger.error(f"[WorkflowAPI] Error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"[WorkflowAPI] Error: {e}")
+        raise HTTPException(500, f"Workflow error: {str(e)}")
 
 
 @router.post("/run/stream")
-async def run_workflow_stream(request: WorkflowRequest, r: Request):
-    """3단계 워크플로우 스트리밍 실행"""
-    auth.get_current_user(r)
+async def run_workflow_stream(request: WorkflowRequest):
+    """
+    3단계 워크플로우 실행 (SSE 스트리밍)
     
+    실시간으로 각 단계 결과를 전송
+    """
     async def generate():
         try:
-            orchestrator = get_orchestrator()
+            orch = get_orchestrator()
             
-            async for result in orchestrator.run_workflow(
+            async for result in orch.run_workflow(
                 task=request.task,
                 context=request.context,
                 session_id=request.session_id
             ):
                 import json
-                yield f"data: {json.dumps({
+                data = {
                     'phase': result.phase,
                     'agent': result.agent_name,
                     'status': result.status,
                     'duration_ms': result.duration_ms,
                     'output_preview': result.output[:500] if result.output else ''
-                })}\n\n"
+                }
+                yield f"data: {json.dumps(data)}\n\n"
             
             yield "data: [DONE]\n\n"
             
@@ -114,26 +109,24 @@ async def run_workflow_stream(request: WorkflowRequest, r: Request):
 
 
 @router.get("/agents")
-def list_agents(r: Request):
-    """사용 가능한 워크플로우 Agent 목록"""
-    auth.get_current_user(r)
-    
+def list_workflow_agents():
+    """워크플로우 Agent 목록"""
     return {
         "agents": [
             {
-                "name": "architecture_agent",
-                "description": "시스템 아키텍처 설계 전문가",
-                "phase": 1
+                "id": "architecture_agent",
+                "name": "Architecture Agent",
+                "description": "시스템 설계 및 아키텍처 담당"
             },
             {
-                "name": "implementation_agent",
-                "description": "소프트웨어 구현 및 개발 전문가",
-                "phase": 2
+                "id": "implementation_agent",
+                "name": "Implementation Agent",
+                "description": "코드 구현 담당"
             },
             {
-                "name": "validation_agent",
-                "description": "테스트 및 검증 전문가",
-                "phase": 3
+                "id": "validation_agent",
+                "name": "Validation Agent",
+                "description": "테스트 및 검증 담당"
             }
         ]
     }

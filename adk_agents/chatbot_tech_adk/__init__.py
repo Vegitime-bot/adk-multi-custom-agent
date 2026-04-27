@@ -20,7 +20,7 @@ IS_DEVELOPMENT = os.getenv("DEVELOPMENT", "false").lower() == "true"
 if IS_DEVELOPMENT:
     # 개발환경: Ollama
     model = LiteLlm(
-        model=f"openai/{os.getenv('OLLAMA_MODEL', 'kimi-k2.5')}",
+        model=f"openai/{os.getenv('OLLAMA_MODEL', 'kimi-k2.5:cloud')}",
         api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
         api_key=os.getenv("OLLAMA_API_KEY", "dummy-key")
     )

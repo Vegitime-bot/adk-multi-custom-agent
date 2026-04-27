@@ -12,11 +12,10 @@ from backend.debug_logger import logger
 try:
     from google.adk.agents import Agent
     from google.adk.models.lite_llm import LiteLlm
-    from google.adk.tools import Tool
     ADK_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     ADK_AVAILABLE = False
-    logger.error("[SubAgentFactory] ADK not available")
+    logger.error(f"[SubAgentFactory] ADK not available: {e}")
 
 from adk_agents.tools.delegation_tools import calculate_confidence, select_sub_chatbot, should_delegate
 
