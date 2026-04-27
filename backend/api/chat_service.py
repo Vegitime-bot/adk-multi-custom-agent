@@ -29,6 +29,7 @@ if settings.USE_MOCK_DB:
     SessionRepository = MockSessionRepository
     MessageRepository = MockMessageRepository
     DelegationRepository = MockDelegationRepository
+    USE_DB_SESSION = False
 else:
     # PostgreSQL Repository 사용
     from backend.repository import (
@@ -36,9 +37,11 @@ else:
         PostgreSQLMessageRepository,
         PostgreSQLDelegationRepository
     )
+    from backend.database.session import get_db
     SessionRepository = PostgreSQLSessionRepository
     MessageRepository = PostgreSQLMessageRepository
     DelegationRepository = PostgreSQLDelegationRepository
+    USE_DB_SESSION = True
     logger.info("[ChatService] Using PostgreSQL repositories")
 
 
@@ -47,11 +50,18 @@ class ChatService:
 
     def __init__(self):
         self.conv_repo = MockConversationRepository()
-        # USE_MOCK_DB 설정에 따라 저장소 선택
-        self.session_repo = SessionRepository()
-        self.message_repo = MessageRepository()
-        self.delegation_repo = DelegationRepository()
         logger.info(f"[ChatService] Initialized with USE_MOCK_DB={settings.USE_MOCK_DB}")
+
+    def _get_repos(self):
+        """설정에 따라 저장소 반환 (Context Manager)"""
+        if USE_DB_SESSION:
+            db = next(get_db())
+            try:
+                yield SessionRepository(db), MessageRepository(db), DelegationRepository(db)
+            finally:
+                db.close()
+        else:
+            yield SessionRepository(), MessageRepository(), DelegationRepository()
 
     async def stream_chat_response(
         self,
@@ -166,20 +176,24 @@ class ChatService:
         except Exception as e:
             logger.error(f"[Chat {request_id}] 기존 저장소 저장 실패: {e}")
 
-        # 2. Mock PostgreSQL 저장소에 저장
+        # 2. PostgreSQL/Mock 저장소에 저장
         try:
+            # 저장소 가져오기 (DB 세션 자동 관리)
+            repos = self._get_repos()
+            session_repo, message_repo, _ = next(repos)
+            
             # 먼저 세션이 존재하는지 확인, 없으면 생성
-            existing_session = self.session_repo.get_by_id(session_id)
+            existing_session = session_repo.get_by_id(session_id)
             if not existing_session:
                 logger.info(f"[Chat {request_id}] 새 세션 생성: {session_id}")
-                self.session_repo.create(
+                session_repo.create(
                     user_id=knox_id,
                     chatbot_id=chatbot_id,
                     session_id=session_id
                 )
             
             # 사용자 메시지 저장
-            self.message_repo.create(
+            message_repo.create(
                 session_id=session_id,
                 role='user',
                 content=message,
@@ -190,7 +204,7 @@ class ChatService:
             )
 
             # 어시스턴트 응답 저장
-            self.message_repo.create(
+            message_repo.create(
                 session_id=session_id,
                 role='assistant',
                 content=response_text,
@@ -200,9 +214,9 @@ class ChatService:
                 delegated_to=delegated_to
             )
 
-            logger.info(f"[Chat {request_id}] Mock 저장소 저장 완료")
+            logger.info(f"[Chat {request_id}] 저장소 저장 완료")
         except Exception as e:
-            logger.error(f"[Chat {request_id}] Mock 저장소 저장 실패: {e}")
+            logger.error(f"[Chat {request_id}] 저장소 저장 실패: {e}")
 
         logger.info(f"[Chat {request_id}] 대화 기록 저장 완료")
 
