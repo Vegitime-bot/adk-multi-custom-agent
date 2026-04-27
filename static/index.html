@@ -482,15 +482,6 @@
         sessionSelect.appendChild(opt);
       });
     } catch(e) {
-      console.warn('세션 목록 로드 실패:', e);
-    }
-  }
-        const date = new Date(s.created_at).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        opt.textContent = `${s.chatbot_id} (${date})`;
-        sessionSelect.appendChild(opt);
-      });
-    } catch(e) {
-      console.warn('세션 목록 로드 실패:', e);
     }
   }
 
