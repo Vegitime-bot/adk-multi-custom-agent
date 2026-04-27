@@ -162,8 +162,8 @@ class ChatServiceV2:
                 self.memory_manager.append_pair(
                     chatbot_id=chatbot_id,
                     session_id=session_id,
-                    user_message=user_message,
-                    assistant_message=assistant_response
+                    user_content=user_message,
+                    assistant_content=assistant_response
                 )
             
             # ConversationRepository 저장
