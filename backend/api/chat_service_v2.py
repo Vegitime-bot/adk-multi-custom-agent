@@ -94,6 +94,7 @@ class ChatServiceV2:
             
             # 4. Router 통해 스트리밍
             full_response = []
+            logger.info(f"[ChatServiceV2] Starting router stream for {chatbot_id}")
             async for chunk in self.router.route_and_stream(
                 chatbot_id=chatbot_id,
                 message=message,
@@ -102,6 +103,7 @@ class ChatServiceV2:
                 db_ids=db_ids,
                 history=history
             ):
+                logger.debug(f"[ChatServiceV2] Yielding chunk: {chunk[:100]}...")
                 yield chunk
                 
                 # SSE 파싱하여 응답 누적
@@ -111,6 +113,8 @@ class ChatServiceV2:
                         full_response.append(data["chunk"])
                 except:
                     pass
+            
+            logger.info(f"[ChatServiceV2] Router stream completed, response length: {len(full_response)}")
             
             # 5. 히스토리 저장
             assistant_response = "".join(full_response)

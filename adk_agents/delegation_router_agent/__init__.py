@@ -84,12 +84,15 @@ class DelegationRouter:
         history: Optional[List[Dict]] = None
     ) -> AsyncGenerator[str, None]:
         """라우팅 및 SSE 스트리밍"""
+        logger.info(f"[DelegationRouter] route_and_stream started for {chatbot_id}")
         try:
             # 1. 챗봇 정의 로드
             chatbot_def = self._load_chatbot_def(chatbot_id)
             if not chatbot_def:
+                logger.error(f"[DelegationRouter] Chatbot not found: {chatbot_id}")
                 yield self._sse_error(f"Chatbot not found: {chatbot_id}")
                 return
+            logger.info(f"[DelegationRouter] Loaded chatbot definition for {chatbot_id}")
 
             # 2. RAG 검색
             rag_results = []
@@ -114,13 +117,16 @@ class DelegationRouter:
             )
 
             # 5. 적절한 Agent 선택
+            logger.info(f"[DelegationRouter] Selecting target agent for {chatbot_id}")
             target_agent = self._select_target_agent(
                 chatbot_def,
                 delegation_ctx,
                 rag_results
             )
+            logger.info(f"[DelegationRouter] Selected agent: {target_agent.name if target_agent else 'None'}")
 
             # 6. Runner 실행 및 스트리밍
+            logger.info(f"[DelegationRouter] Starting _execute_agent_stream")
             async for chunk in self._execute_agent_stream(
                 agent=target_agent,
                 message=message,
@@ -140,7 +146,14 @@ class DelegationRouter:
         return self.factory._get_chatbot_def(chatbot_id)
 
     async def _search_rag(self, query: str, db_ids: List[str]) -> List[Dict]:
-        """RAG 검색"""
+        """RAG 검색 - Mock DB 지원"""
+        # Mock DB 모드: 환경변수 확인
+        use_mock = os.getenv("USE_MOCK_DB", "false").lower() == "true"
+        
+        if use_mock:
+            logger.info(f"[DelegationRouter] Using Mock RAG for {db_ids}")
+            return self._mock_search_rag(query, db_ids)
+        
         if not self.ingestion_client:
             return []
 
@@ -157,6 +170,45 @@ class DelegationRouter:
                 logger.warning(f"[DelegationRouter] Search failed for {db_id}: {e}")
 
         return results
+    
+    def _mock_search_rag(self, query: str, db_ids: List[str]) -> List[Dict]:
+        """Mock RAG 검색 결과"""
+        mock_results = []
+        
+        # Query에 따른 Mock 결과 생성
+        query_lower = query.lower()
+        
+        if "인사" in query_lower or "hr" in query_lower or "휴가" in query_lower:
+            mock_results.append({
+                "content": "인사팀 규정: 연차 휴가는 입사 후 1년 만근 시 15일 발생합니다.",
+                "score": 0.95,
+                "source": "db_hr_policy"
+            })
+            mock_results.append({
+                "content": "복리후생: 점심 식대는 월 20만원 한도로 지원됩니다.",
+                "score": 0.88,
+                "source": "db_hr_benefits"
+            })
+        elif "기술" in query_lower or "개발" in query_lower or "tech" in query_lower or "백엔드" in query_lower:
+            mock_results.append({
+                "content": "기술스택: 백엔드는 FastAPI, PostgreSQL, Redis를 사용합니다.",
+                "score": 0.92,
+                "source": "db_tech_stack"
+            })
+            mock_results.append({
+                "content": "개발환경: Docker, Kubernetes 기반의 마이크로서비스 아키텍처",
+                "score": 0.85,
+                "source": "db_tech_infra"
+            })
+        else:
+            mock_results.append({
+                "content": "회사소개: 당사는 2015년 설립된 AI 솔루션 기업입니다.",
+                "score": 0.90,
+                "source": "db_company_overview"
+            })
+        
+        logger.info(f"[DelegationRouter] Mock RAG returned {len(mock_results)} results")
+        return mock_results
 
     def _select_target_agent(
         self,
@@ -209,19 +261,27 @@ class DelegationRouter:
         content = types.Content(role='user', parts=[types.Part(text=context_prompt)])
 
         full_response = []
-        async for event in runner.run_async(
-            user_id=user_id,
-            session_id=session_id,
-            new_message=content
-        ):
-            if event.content and event.content.parts:
-                for part in event.content.parts:
-                    if part.text:
-                        chunk = part.text
-                        full_response.append(chunk)
-                        yield self._sse_data(chunk)
+        logger.info(f"[DelegationRouter] Starting runner for session {session_id}")
+        try:
+            async for event in runner.run_async(
+                user_id=user_id,
+                session_id=session_id,
+                new_message=content
+            ):
+                logger.debug(f"[DelegationRouter] Event received: {event}")
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if part.text:
+                            chunk = part.text
+                            full_response.append(chunk)
+                            logger.debug(f"[DelegationRouter] Yielding chunk: {chunk[:50]}...")
+                            yield self._sse_data(chunk)
 
-        yield self._sse_done("".join(full_response))
+            logger.info(f"[DelegationRouter] Runner completed, response length: {len(full_response)}")
+            yield self._sse_done("".join(full_response))
+        except Exception as e:
+            logger.error(f"[DelegationRouter] Runner error: {e}", exc_info=True)
+            yield self._sse_error(f"Runner error: {e}")
 
     def _build_context_prompt(
         self,
