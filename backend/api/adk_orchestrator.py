@@ -177,7 +177,7 @@ class ADKWorkflowOrchestrator:
         try:
             # 세션 먼저 생성
             from google.adk.sessions import Session
-            session = self.session_service.create_session(
+            session = await self.session_service.create_session(
                 app_name="adk-workflow",
                 user_id=user_id,
                 session_id=session_id
