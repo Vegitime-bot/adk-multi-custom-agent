@@ -70,15 +70,6 @@ class SubAgentFactory:
         
         logger.info(f"[SubAgentFactory] Creating agent for {chatbot_id}")
         
-        # 하위 챗봇 재귀적 생성
-        sub_agents = []
-        for sub_def in chatbot_def.get("sub_chatbots", []):
-            # 하위 챗봇 정의 조회 (간략화된 버전 - 실제로는 ChatbotManager 사용)
-            sub_chatbot = self._get_chatbot_def(sub_def["id"])
-            if sub_chatbot:
-                sub_agent = self.create_agent(sub_chatbot)
-                sub_agents.append(sub_agent)
-        
         # 시스템 프롬프트 구성
         system_prompt = self._build_system_prompt(chatbot_def)
         
@@ -88,19 +79,18 @@ class SubAgentFactory:
             # LLM에게 위임 결정을 맡기고, 실제 위임은 sub_agents로 처리
             pass  # tools는 sub_agents가 있으면 자동으로 delegate
         
-        # Agent 생성
+        # Agent 생성 (sub_agents 없이 - 위임은 DelegationRouter에서 처리)
         agent = Agent(
             name=chatbot_id,
             model=self.model,
             instruction=system_prompt,
             description=chatbot_def.get("description", ""),
-            sub_agents=sub_agents if sub_agents else None,
         )
         
         # 캐시 저장
         self._agent_cache[chatbot_id] = agent
         
-        logger.info(f"[SubAgentFactory] Created agent {chatbot_id} with {len(sub_agents)} sub-agents")
+        logger.info(f"[SubAgentFactory] Created agent {chatbot_id}")
         return agent
     
     def _build_system_prompt(self, chatbot_def: Dict[str, Any]) -> str:
