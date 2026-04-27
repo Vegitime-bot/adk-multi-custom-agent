@@ -595,10 +595,16 @@
                 try {
                   const raw = line.slice(6).trim();
                   if (!raw || raw === '{}') continue;
-                  const chunk = JSON.parse(raw);
-                  if (typeof chunk === 'string') {
-                    fullText += chunk;
+                  const data = JSON.parse(raw);
+                  // Handle {chunk: "..."} format from ChatServiceV2
+                  if (data.chunk) {
+                    fullText += data.chunk;
                     assistantDiv.innerHTML = parseMarkdownTable(fullText);
+                  } else if (data.done) {
+                    // Stream complete
+                  } else if (data.session_id) {
+                    sessionId = data.session_id;
+                    updateSessionInfo();
                   }
                 } catch {}
               }
@@ -619,16 +625,19 @@
             try {
               const raw = line.slice(6).trim();
               if (!raw || raw === '{}') continue;
-              const chunk = JSON.parse(raw);
-              if (typeof chunk === 'string') {
-                fullText += chunk;
+              const data = JSON.parse(raw);
+              // Handle {chunk: "..."} format from ChatServiceV2
+              if (data.chunk) {
+                fullText += data.chunk;
                 assistantDiv.innerHTML = parseMarkdownTable(fullText);
-              } else if (chunk.session_id) {
-                sessionId = chunk.session_id;
+              } else if (data.done) {
+                // Stream complete
+              } else if (data.session_id) {
+                sessionId = data.session_id;
                 updateSessionInfo();
-              } else if (chunk.event === 'session' && chunk.data) {
+              } else if (data.event === 'session' && data.data) {
                 // SSE session 이벤트 처리
-                const sessionData = JSON.parse(chunk.data);
+                const sessionData = JSON.parse(data.data);
                 if (sessionData.session_id) {
                   sessionId = sessionData.session_id;
                   updateSessionInfo();
