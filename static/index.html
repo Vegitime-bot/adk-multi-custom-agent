@@ -471,6 +471,9 @@
       // 세션 선택기 표시
       sessionSelect.style.display = 'block';
       
+      // 기존 선택값 저장
+      const previousSession = sessionSelect.value;
+      
       sessionSelect.innerHTML = '<option value="">세션 선택...</option>';
       sessions.forEach(s => {
         const opt = document.createElement('option');
@@ -481,7 +484,24 @@
         opt.textContent = `${s.chatbot_id} (${date})`;
         sessionSelect.appendChild(opt);
       });
+      
+      // change 이벤트 리스너 등록 (한 번만)
+      if (!sessionSelect._hasChangeListener) {
+        sessionSelect.addEventListener('change', () => {
+          const selectedSessionId = sessionSelect.value;
+          if (selectedSessionId) {
+            console.log('[Debug] 세션 선택됨:', selectedSessionId);
+            sessionId = selectedSessionId;
+            chatContainer.innerHTML = '';
+            updateSessionInfo();
+            loadChatHistory(sessionId);
+          }
+        });
+        sessionSelect._hasChangeListener = true;
+      }
+      
     } catch(e) {
+      console.warn('세션 목록 로드 실패:', e);
     }
   }
 
