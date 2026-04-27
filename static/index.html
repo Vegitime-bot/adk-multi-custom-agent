@@ -232,12 +232,18 @@
 
   // ── 챗봇 목록 로드 ──────────────────────────────────────────────
   async function loadChatbots() {
+    console.log('[Debug] loadChatbots 시작, URL:', window.location.search);
     try {
       const res = await fetch(`${BASE}/api/chatbots`);
       chatbots = await res.json();  // 전역 변수에 저장
       
       // 현재 선택된 값 저장
       const previousSelection = selector.value;
+      
+      // URL 파라미터 먼저 확인 (가장 높은 우선순위)
+      const urlChatbotId = getUrlParam('chatbot');
+      console.log('[Debug] URL chatbot param:', urlChatbotId);
+      console.log('[Debug] Previous selection:', previousSelection);
       
       selector.innerHTML = '<option value="">챗봇 선택...</option>';
       chatbots.forEach(b => {
@@ -248,18 +254,34 @@
         selector.appendChild(opt);
       });
       
+      console.log('[Debug] 챗봇 목록 로드됨:', chatbots.length, '개');
+      
       // URL 파라미터에서 챗봇 ID 확인 (우선순위: URL > 이전 선택)
-      const urlChatbotId = getUrlParam('chatbot');
       const targetChatbotId = urlChatbotId || previousSelection;
       
-      if (targetChatbotId && chatbots.find(b => b.id === targetChatbotId)) {
-        selector.value = targetChatbotId;
-        // change 이벤트가 자동으로 발생하지 않으면 수동으로 발생
-        if (selector.value === targetChatbotId) {
-          selector.dispatchEvent(new Event('change'));
+      if (targetChatbotId) {
+        const foundBot = chatbots.find(b => b.id === targetChatbotId);
+        console.log('[Debug] 찾은 챗봇:', foundBot?.name || '없음');
+        
+        if (foundBot) {
+          selector.value = targetChatbotId;
+          console.log('[Debug] selector 값 설정:', selector.value);
+          
+          // value가 제대로 설정되었는지 확인 후 change 이벤트 발생
+          if (selector.value === targetChatbotId) {
+            console.log('[Debug] change 이벤트 발생');
+            selector.dispatchEvent(new Event('change'));
+          } else {
+            console.warn('[Debug] selector 값 설정 실패');
+          }
+        } else {
+          console.warn('[Debug] 챗봇을 찾을 수 없음:', targetChatbotId);
         }
+      } else {
+        console.log('[Debug] 선택할 챗봇 ID 없음');
       }
     } catch(e) {
+      console.error('[Debug] 챗봇 목록 로드 실패:', e);
       addSystemMsg('챗봇 목록을 불러오지 못했습니다.');
     }
   }
@@ -591,23 +613,6 @@
     sessionId = sessionFromUrl;
     updateSessionInfo();
     loadChatHistory(sessionId);
-  }
-
-  // URL 파라미터로 챗봇 ID가 전달된 경우 자동 선택
-  const chatbotFromUrl = urlParams.get('chatbot');
-  if (chatbotFromUrl) {
-    // 챗봇 목록 로드 후 선택
-    const checkAndSelect = setInterval(() => {
-      if (selector.options.length > 0) {
-        clearInterval(checkAndSelect);
-        selector.value = chatbotFromUrl;
-        if (selector.value === chatbotFromUrl) {
-          selector.dispatchEvent(new Event('change'));
-        }
-      }
-    }, 100);
-    // 5초 후에도 로드되지 않으면 중단
-    setTimeout(() => clearInterval(checkAndSelect), 5000);
   }
 
   sendBtn.addEventListener('click', sendMessage);
