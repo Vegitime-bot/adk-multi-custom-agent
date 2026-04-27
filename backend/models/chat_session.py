@@ -1,0 +1,63 @@
+"""
+backend/models/chat_session.py - ChatSession SQLAlchemy Model
+"""
+from datetime import datetime
+from typing import List, Optional
+from uuid import uuid4, UUID
+
+from sqlalchemy import Column, String, DateTime, Integer, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import relationship
+
+from backend.database.session import Base
+
+
+class ChatSession(Base):
+    """세션 메타데이터 모델"""
+    
+    __tablename__ = 'sessions'
+    
+    session_id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(String(100), nullable=False, index=True)
+    chatbot_id = Column(String(100), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+    message_count = Column(Integer, default=0)
+    last_accessed = Column(DateTime(timezone=True), default=func.now())
+    
+    # Relationships
+    messages = relationship(
+        "Message",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at"
+    )
+    
+    delegation_chains = relationship(
+        "DelegationChain",
+        back_populates="session",
+        cascade="all, delete-orphan"
+    )
+    
+    def touch(self):
+        """last_accessed 업데이트"""
+        self.last_accessed = datetime.utcnow()
+    
+    def increment_message_count(self):
+        """메시지 수 증가"""
+        self.message_count += 1
+    
+    def to_dict(self) -> dict:
+        """Dictionary 변환"""
+        return {
+            "session_id": str(self.session_id),
+            "user_id": self.user_id,
+            "chatbot_id": self.chatbot_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "last_accessed": self.last_accessed.isoformat() if self.last_accessed else None,
+            "message_count": self.message_count
+        }
+    
+    def __repr__(self):
+        return f"<ChatSession(id={self.session_id}, user={self.user_id}, chatbot={self.chatbot_id})>"

@@ -1,0 +1,91 @@
+-- PostgreSQL Schema for ADK Multi Custom Agent Service
+-- Phase 1: Session and Message Management
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Sessions table: 세션 메타데이터
+CREATE TABLE sessions (
+    session_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id TEXT NOT NULL,
+    chatbot_id TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    message_count INTEGER DEFAULT 0,
+    last_accessed TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Messages table: 메시지 본문
+CREATE TABLE messages (
+    message_id SERIAL PRIMARY KEY,
+    session_id UUID REFERENCES sessions(session_id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+    content TEXT NOT NULL,
+    tokens_used INTEGER DEFAULT 0,
+    latency_ms INTEGER DEFAULT 0,
+    confidence_score FLOAT,
+    delegated_to TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Delegation chains table: 위임 체인 추적
+CREATE TABLE delegation_chains (
+    id SERIAL PRIMARY KEY,
+    session_id UUID REFERENCES sessions(session_id) ON DELETE CASCADE,
+    parent_agent TEXT NOT NULL,
+    child_agent TEXT NOT NULL,
+    delegation_reason TEXT,
+    confidence_score FLOAT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX idx_sessions_chatbot_id ON sessions(chatbot_id);
+CREATE INDEX idx_sessions_last_accessed ON sessions(last_accessed);
+CREATE INDEX idx_messages_session_id ON messages(session_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at);
+CREATE INDEX idx_delegation_chains_session_id ON delegation_chains(session_id);
+
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Trigger to auto-update updated_at
+CREATE TRIGGER update_sessions_updated_at
+    BEFORE UPDATE ON sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- View for session summary (메시지 수 포함)
+CREATE VIEW session_summary AS
+SELECT 
+    s.session_id,
+    s.user_id,
+    s.chatbot_id,
+    s.created_at,
+    s.updated_at,
+    s.last_accessed,
+    COUNT(m.message_id) as actual_message_count
+FROM sessions s
+LEFT JOIN messages m ON s.session_id = m.session_id
+GROUP BY s.session_id, s.user_id, s.chatbot_id, s.created_at, s.updated_at, s.last_accessed;
+
+-- 30일 이상 된 세션 삭제 함수
+CREATE OR REPLACE FUNCTION delete_old_sessions()
+RETURNS INTEGER AS $$
+DECLARE
+    deleted_count INTEGER;
+BEGIN
+    DELETE FROM sessions 
+    WHERE last_accessed < CURRENT_TIMESTAMP - INTERVAL '30 days';
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
