@@ -150,6 +150,16 @@ class ChatService:
 
         # 2. Mock PostgreSQL 저장소에 저장
         try:
+            # 먼저 세션이 존재하는지 확인, 없으면 생성
+            existing_session = self.session_repo.get_by_id(session_id)
+            if not existing_session:
+                logger.info(f"[Chat {request_id}] 새 세션 생성: {session_id}")
+                self.session_repo.create(
+                    user_id=knox_id,
+                    chatbot_id=chatbot_id,
+                    session_id=session_id
+                )
+            
             # 사용자 메시지 저장
             self.message_repo.create(
                 session_id=session_id,
