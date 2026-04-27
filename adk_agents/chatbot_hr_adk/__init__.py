@@ -3,6 +3,14 @@ HR Agent for ADK Web UI
 """
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# .env 파일 명시적 로드
+env_path = Path(__file__).parent.parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 
@@ -10,14 +18,14 @@ from google.adk.models.lite_llm import LiteLlm
 IS_DEVELOPMENT = os.getenv("DEVELOPMENT", "false").lower() == "true"
 
 if IS_DEVELOPMENT:
-    # 개발환경: Ollama (Kimi-k2.5 등 로컬 모델)
+    # 개발환경: Ollama
     model = LiteLlm(
         model=f"openai/{os.getenv('OLLAMA_MODEL', 'kimi-k2.5')}",
         api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
         api_key=os.getenv("OLLAMA_API_KEY", "dummy-key")
     )
 else:
-    # 사내환경: 사내 LLM Gateway
+    # 사내환경
     model = LiteLlm(
         model=f"openai/{os.getenv('LLM_MODEL', 'GLM4.7')}",
         api_base=os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:11434/v1"),
