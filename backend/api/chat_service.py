@@ -27,6 +27,15 @@ from backend.api.utils.chat_utils import (
     create_executor,
 )
 
+# PostgreSQL Repository import
+try:
+    from backend.repository import PostgreSQLMessageRepository, PostgreSQLDelegationRepository
+    from backend.database.session import get_db_context
+    USE_POSTGRES = True
+except ImportError:
+    USE_POSTGRES = False
+
+
 
 class ChatService:
     """채팅 비즈니스 로직 서비스"""
@@ -139,26 +148,65 @@ class ChatService:
         confidence_score: Optional[float],
         delegated_to: Optional[str],
     ):
-        """대화 기록 저장"""
+        """대화 기록 저장 (PostgreSQL + 기존 저장소)"""
+        knox_id = user.get("knox_id", "unknown")
+        response_text = "".join(full_response)
+        tokens = chunk_count * 4  # Approximate
+        latency_ms = int(llm_elapsed * 1000)
+        
+        # 1. 기존 저장소에 저장
         try:
             conv_log = ConversationLog(
                 id=None,
                 session_id=session_id,
-                knox_id=user.get("knox_id", "unknown"),
+                knox_id=knox_id,
                 chatbot_id=chatbot_id,
                 user_message=message,
-                assistant_response="".join(full_response),
-                tokens_used=chunk_count * 4,  # Approximate
-                latency_ms=int(llm_elapsed * 1000),
+                assistant_response=response_text,
+                tokens_used=tokens,
+                latency_ms=latency_ms,
                 search_results_count=search_results_count,
                 confidence_score=confidence_score,
                 delegated_to=delegated_to,
                 created_at=datetime.now(),
             )
             self.conv_repo.save(conv_log)
-            logger.info(f"[Chat {request_id}] 대화 기록 저장 완료")
         except Exception as e:
-            logger.error(f"[Chat {request_id}] 대화 기록 저장 실패: {e}")
+            logger.error(f"[Chat {request_id}] 기존 저장소 저장 실패: {e}")
+        
+        # 2. PostgreSQL에 저장 (사용자 메시지 + 어시스턴트 응답)
+        if USE_POSTGRES:
+            try:
+                with get_db_context() as db:
+                    msg_repo = PostgreSQLMessageRepository(db)
+                    
+                    # 사용자 메시지 저장
+                    msg_repo.create(
+                        session_id=session_id,
+                        role='user',
+                        content=message,
+                        tokens_used=len(message.split()),  # 단어 수로 근사
+                        latency_ms=0,
+                        confidence_score=None,
+                        delegated_to=None
+                    )
+                    
+                    # 어시스턴트 응답 저장
+                    msg_repo.create(
+                        session_id=session_id,
+                        role='assistant',
+                        content=response_text,
+                        tokens_used=tokens,
+                        latency_ms=latency_ms,
+                        confidence_score=confidence_score,
+                        delegated_to=delegated_to
+                    )
+                    
+                    logger.info(f"[Chat {request_id}] PostgreSQL 저장 완료")
+            except Exception as e:
+                logger.error(f"[Chat {request_id}] PostgreSQL 저장 실패: {e}")
+        
+        logger.info(f"[Chat {request_id}] 대화 기록 저장 완료")
 
     async def stream_tool_response(
         self,
