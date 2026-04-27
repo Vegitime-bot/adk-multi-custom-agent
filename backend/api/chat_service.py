@@ -1,5 +1,5 @@
 """
-backend/api/chat_service.py - 채팅 비즈니스 로직 서비스 (Mock Version)
+backend/api/chat_service.py - 채팅 비즈니스 로직 서비스
 """
 from __future__ import annotations
 
@@ -18,12 +18,28 @@ from backend.conversation.repository import (
 )
 from backend.api.utils.sse_utils import sse_event, sse_done, sse_error
 
-# Mock Repository 사용
-from backend.repository.mock_repository import (
-    MockSessionRepository,
-    MockMessageRepository,
-    MockDelegationRepository
-)
+# USE_MOCK_DB 설정에 따라 저장소 선택
+if settings.USE_MOCK_DB:
+    # Mock Repository 사용 (파일 기반)
+    from backend.repository.mock_repository import (
+        MockSessionRepository,
+        MockMessageRepository,
+        MockDelegationRepository
+    )
+    SessionRepository = MockSessionRepository
+    MessageRepository = MockMessageRepository
+    DelegationRepository = MockDelegationRepository
+else:
+    # PostgreSQL Repository 사용
+    from backend.repository import (
+        PostgreSQLSessionRepository,
+        PostgreSQLMessageRepository,
+        PostgreSQLDelegationRepository
+    )
+    SessionRepository = PostgreSQLSessionRepository
+    MessageRepository = PostgreSQLMessageRepository
+    DelegationRepository = PostgreSQLDelegationRepository
+    logger.info("[ChatService] Using PostgreSQL repositories")
 
 
 class ChatService:
@@ -31,9 +47,11 @@ class ChatService:
 
     def __init__(self):
         self.conv_repo = MockConversationRepository()
-        self.session_repo = MockSessionRepository()
-        self.message_repo = MockMessageRepository()
-        self.delegation_repo = MockDelegationRepository()
+        # USE_MOCK_DB 설정에 따라 저장소 선택
+        self.session_repo = SessionRepository()
+        self.message_repo = MessageRepository()
+        self.delegation_repo = DelegationRepository()
+        logger.info(f"[ChatService] Initialized with USE_MOCK_DB={settings.USE_MOCK_DB}")
 
     async def stream_chat_response(
         self,
