@@ -23,6 +23,11 @@ class Settings:
     USE_MOCK_DB: bool = os.getenv("USE_MOCK_DB", "true").lower() == "true"
     USE_MOCK_AUTH: bool = os.getenv("USE_MOCK_AUTH", "true").lower() == "true"
 
+    # ── Mock 데이터 저장 경로 (PostgreSQL 미사용 시) ───────────────
+    MOCK_DATA_DIR: Path = Path(os.getenv("MOCK_DATA_DIR", str(PROJECT_ROOT / "data")))
+    MOCK_SESSIONS_FILE: Path = MOCK_DATA_DIR / "sessions.json"
+    MOCK_MESSAGES_DIR: Path = MOCK_DATA_DIR / "messages"
+
     # ── PostgreSQL ───────────────────────────────────────────────
     PG_HOST: str = os.getenv("PG_HOST", "localhost")
     PG_PORT: int = int(os.getenv("PG_PORT", "5432"))

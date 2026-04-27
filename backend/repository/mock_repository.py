@@ -9,10 +9,13 @@ from typing import List, Optional, Dict, Any
 from uuid import uuid4, UUID
 from pathlib import Path
 
-# 데이터 저장 경로
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
-SESSIONS_FILE = DATA_DIR / "sessions.json"
-MESSAGES_DIR = DATA_DIR / "messages"
+# config에서 설정 가져오기
+from config import settings
+
+# 데이터 저장 경로 (config.py에서 설정)
+DATA_DIR = settings.MOCK_DATA_DIR
+SESSIONS_FILE = settings.MOCK_SESSIONS_FILE
+MESSAGES_DIR = settings.MOCK_MESSAGES_DIR
 
 
 def _ensure_data_dir():
