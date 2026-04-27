@@ -165,7 +165,7 @@ class HierarchyTester:
         
         if "error" in result:
             error = result["error"]
-        elif result.get("confidence", 0) >= 70:
+        elif (result.get("confidence") or 0) >= 70:
             status = "PASS"
         else:
             error = f"Confidence too low: {result.get('confidence')}"
