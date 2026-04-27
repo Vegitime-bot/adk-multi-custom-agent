@@ -520,9 +520,13 @@
             const selectedSession = sessions.find(s => s.session_id === selectedSessionId);
             if (selectedSession && selectedSession.chatbot_id) {
               selectedChatbotId = selectedSession.chatbot_id;
+              console.log('[Debug] 챗봇 ID 업데이트:', selectedChatbotId);
               // 챗봇 선택기도 업데이트
               if (selector.value !== selectedChatbotId) {
                 selector.value = selectedChatbotId;
+                console.log('[Debug] 챗봇 선택기 업데이트:', selector.value);
+                // 챗봇 선택기 change 이벤트 발생시켜서 토글 등 UI 업데이트
+                selector.dispatchEvent(new Event('change'));
               }
             }
             updateSessionInfo();
