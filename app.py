@@ -28,6 +28,7 @@ logger = get_logger(__name__)
 
 from backend.api.admin import router as admin_router
 from backend.api.chat import router as chat_router
+from backend.api.sessions import router as sessions_router
 from backend.api.health import router as health_router
 from backend.api.permissions import router as permissions_router
 from backend.api.conversations import router as conversations_router
@@ -128,6 +129,7 @@ def create_app() -> FastAPI:
     # ── 라우터 등록 ───────────────────────────────────────────────
     app.include_router(health_router)
     app.include_router(chat_router)
+    app.include_router(sessions_router)  # 새 세션 관리 API
     app.include_router(admin_router, prefix="")
     app.include_router(permissions_router)
     app.include_router(conversations_router)
