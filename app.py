@@ -32,6 +32,7 @@ from backend.api.sessions import router as sessions_router
 from backend.api.health import router as health_router
 from backend.api.permissions import router as permissions_router
 from backend.api.conversations import router as conversations_router
+from backend.api.workflow import router as workflow_router
 from backend.managers.chatbot_manager import ChatbotManager
 from backend.managers.memory_manager import MemoryManager
 from backend.managers.session_manager import SessionManager
@@ -129,10 +130,11 @@ def create_app() -> FastAPI:
     # ── 라우터 등록 ───────────────────────────────────────────────
     app.include_router(health_router)
     app.include_router(chat_router)
-    app.include_router(sessions_router, prefix="/api")  # /api/sessions 경로로 등록
+    app.include_router(sessions_router, prefix="/api")
     app.include_router(admin_router, prefix="")
     app.include_router(permissions_router)
     app.include_router(conversations_router)
+    app.include_router(workflow_router)
 
     # ── Admin 페이지 라우팅 ─────────────────────────────────────────
     # 테스트 및 사용자 편의를 위한 /admin 경로 추가
