@@ -21,7 +21,7 @@ IS_DEVELOPMENT = os.getenv("DEVELOPMENT", "false").lower() == "true"
 
 # 디버그: 실제로 읽은 환경변수 출력 (문제 해결 후 제거)
 print(f"[DEBUG chatbot_company_adk] DEVELOPMENT={os.getenv('DEVELOPMENT')}")
-print(f"[DEBUG chatbot_company_adk] LLM_MODEL={os.getenv('LLM_MODEL')}")
+print(f"[DEBUG chatbot_company_adk] LLM_DEFAULT_MODEL={os.getenv('LLM_DEFAULT_MODEL')}")
 print(f"[DEBUG chatbot_company_adk] LLM_BASE_URL={os.getenv('LLM_BASE_URL')}")
 
 if IS_DEVELOPMENT:
@@ -33,7 +33,8 @@ if IS_DEVELOPMENT:
     )
 else:
     # 사내환경: 사내 LLM Gateway (OpenAI compatible)
-    model_name = os.getenv("LLM_MODEL", "GLM4.7")
+    # .env.example과 동일한 변수명 사용
+    model_name = os.getenv("LLM_DEFAULT_MODEL", "GLM4.7")
     api_base = os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:11434/v1")
     api_key = os.getenv("LLM_API_KEY", "")
     

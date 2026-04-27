@@ -25,11 +25,15 @@ if IS_DEVELOPMENT:
         api_key=os.getenv("OLLAMA_API_KEY", "dummy-key")
     )
 else:
-    # 사내환경
+    # 사내환경: .env.example과 동일한 변수명 사용
+    model_name = os.getenv("LLM_DEFAULT_MODEL", "GLM4.7")
+    api_base = os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:11434/v1")
+    api_key = os.getenv("LLM_API_KEY", "")
+    
     model = LiteLlm(
-        model=f"openai/{os.getenv('LLM_MODEL', 'GLM4.7')}",
-        api_base=os.getenv("LLM_BASE_URL", "http://llm-gw.company.com:11434/v1"),
-        api_key=os.getenv("LLM_API_KEY", "")
+        model=f"openai/{model_name}",
+        api_base=api_base,
+        api_key=api_key
     )
 
 root_agent = Agent(
