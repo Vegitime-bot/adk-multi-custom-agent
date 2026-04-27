@@ -132,6 +132,14 @@ def create_app() -> FastAPI:
     app.include_router(permissions_router)
     app.include_router(conversations_router)
 
+    # ── Admin 페이지 라우팅 ─────────────────────────────────────────
+    # 테스트 및 사용자 편의를 위한 /admin 경로 추가
+    admin_html_path = STATIC_DIR / "admin" / "index.html"
+    if admin_html_path.exists():
+        @app.get("/admin", response_class=HTMLResponse)
+        async def admin_page():
+            return HTMLResponse(content=admin_html_path.read_text(encoding="utf-8"))
+    
     # ── 정적 파일 마운트 ───────────────────────────────────────────
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

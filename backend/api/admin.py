@@ -569,3 +569,43 @@ async def remove_restricted_chatbot(
         # 참고: chat.py는 파일에서 restricted_chatbots.json을 다시 로드함
     
     return {"status": "success", "chatbot_id": chatbot_id}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 테스트 호환성: /admin/api/* 경로 지원 (/main/api/* 별칭)
+# ═══════════════════════════════════════════════════════════════════
+
+@router.get("/admin/api/chatbots")
+async def admin_list_chatbots_alias(
+    chatbot_mgr: ChatbotManager = Depends(get_chatbot_manager),
+) -> List[dict]:
+    """/admin/api/chatbots → /main/api/chatbots 별칭"""
+    return await list_chatbots(chatbot_mgr)
+
+
+@router.get("/admin/api/stats")
+async def admin_stats_alias(
+    chatbot_mgr: ChatbotManager = Depends(get_chatbot_manager),
+) -> dict:
+    """/admin/api/stats → /main/api/stats 별칭"""
+    return await get_stats(chatbot_mgr)
+
+
+@router.post("/admin/api/chatbots")
+async def admin_create_chatbot_alias(
+    request: dict,
+    req: Request,
+    chatbot_mgr: ChatbotManager = Depends(get_chatbot_manager),
+    _: bool = Depends(require_admin),
+) -> dict:
+    """/admin/api/chatbots → /main/api/chatbots 별칭"""
+    return await create_chatbot(request, req, chatbot_mgr, _)
+
+
+@router.delete("/admin/api/chatbots/{chatbot_id}")
+async def admin_delete_chatbot_alias(
+    chatbot_id: str,
+    chatbot_mgr: ChatbotManager = Depends(get_chatbot_manager),
+) -> dict:
+    """/admin/api/chatbots/{id} → /main/api/chatbots/{id} 별칭"""
+    return await delete_chatbot(chatbot_id, chatbot_mgr)
