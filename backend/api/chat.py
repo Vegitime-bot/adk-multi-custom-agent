@@ -123,8 +123,9 @@ async def chat(b: ChatR, r: Request):
     md = cu.resolve_execution_mode(cb, ss, b.mode)
     _chk(auth.get_user_permissions(u), b.chatbot_id, md.value)
     
-    # ChatServiceV2 사용 여부
-    if USE_V2:
+    # ChatServiceV2 사용 여부 (런타임 체크)
+    use_v2 = os.getenv("USE_CHAT_SERVICE_V2", "false").lower() == "true"
+    if use_v2:
         logger.info(f"[ChatAPI] Using V2 for {b.chatbot_id}")
         return await _chat_v2(b, r, u, cbm, sm, mm)
     
@@ -234,22 +235,28 @@ async def _chat_v2(b: ChatR, r: Request, u, cbm, sm, mm):
     """ChatServiceV2 (JSON 기반 계층 구조 + ADK sub_agents)"""
     from backend.conversation.repository import get_conversation_repository
     
+    logger.info(f"[_chat_v2] Starting for {b.chatbot_id}")
+    
     try:
         service = get_chat_service_v2(
             chatbot_manager=cbm,
             memory_manager=mm,
             conversation_repo=get_conversation_repository()
         )
+        logger.info(f"[_chat_v2] Got service, calling chat_stream")
         
         # 스트리밍 응답
+        stream = service.chat_stream(
+            chatbot_id=b.chatbot_id,
+            message=b.message,
+            session_id=b.session_id or f"v2-{b.chatbot_id}-{int(time.time()*1000)}",
+            user_id=u["knox_id"],
+            mode=b.mode
+        )
+        logger.info(f"[_chat_v2] Created stream, returning StreamingResponse")
+        
         return SR(
-            service.chat_stream(
-                chatbot_id=b.chatbot_id,
-                message=b.message,
-                session_id=b.session_id or f"v2-{b.chatbot_id}-{int(time.time()*1000)}",
-                user_id=u["knox_id"],
-                mode=b.mode
-            ),
+            stream,
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
         )

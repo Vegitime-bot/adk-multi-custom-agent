@@ -76,13 +76,16 @@ class ChatServiceV2:
             SSE 형식 문자열
         """
         start_time = time.time()
+        logger.info(f"[ChatServiceV2] chat_stream started for {chatbot_id}, message: {message[:50]}...")
         
         try:
             # 1. 챗봇 정의 로드
             chatbot = self._get_chatbot(chatbot_id)
             if not chatbot:
+                logger.error(f"[ChatServiceV2] Chatbot not found: {chatbot_id}")
                 yield sse_error(f"Chatbot not found: {chatbot_id}")
                 return
+            logger.info(f"[ChatServiceV2] Loaded chatbot: {chatbot_id}")
             
             # 2. 권한 확인된 DB ID 목록
             db_ids = self._get_authorized_db_ids(chatbot, user_id)
@@ -92,10 +95,14 @@ class ChatServiceV2:
             if self.memory_manager:
                 history = self.memory_manager.get_history(chatbot_id, session_id)
             
-            # 4. Router 통해 스트리밍
+            # 4. 세션 ID를 첫 이벤트로 전송 (UI에서 저장용)
+            yield sse_event({"session_id": session_id})
+            logger.info(f"[ChatServiceV2] Sent session_id: {session_id}")
+            
+            # 5. Router 통해 스트리밍 (Agent Tool 방식)
             full_response = []
-            logger.info(f"[ChatServiceV2] Starting router stream for {chatbot_id}")
-            async for chunk in self.router.route_and_stream(
+            logger.info(f"[ChatServiceV2] Starting router stream with tools for {chatbot_id}")
+            async for chunk in self.router.route_and_stream_with_tools(
                 chatbot_id=chatbot_id,
                 message=message,
                 session_id=session_id,

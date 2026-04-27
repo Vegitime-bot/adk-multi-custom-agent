@@ -283,6 +283,101 @@ class DelegationRouter:
             logger.error(f"[DelegationRouter] Runner error: {e}", exc_info=True)
             yield self._sse_error(f"Runner error: {e}")
 
+    async def route_and_stream_with_tools(
+        self,
+        chatbot_id: str,
+        message: str,
+        session_id: str,
+        user_id: str = "user",
+        db_ids: Optional[List[str]] = None,
+        history: Optional[List[Dict]] = None
+    ) -> AsyncGenerator[str, None]:
+        """
+        Agent Tool 방식으로 라우팅 및 스트리밍
+        
+        하위 Agent를 Tool로 등록하여 LLM이 자동으로 위임 결정
+        """
+        logger.info(f"[DelegationRouter] route_and_stream_with_tools started for {chatbot_id}")
+        
+        try:
+            # 1. Root Agent + 하위 Agent Tools 생성
+            root_agent = self.factory.create_root_agent_with_tools(chatbot_id)
+            if not root_agent:
+                logger.error(f"[DelegationRouter] Failed to create root agent: {chatbot_id}")
+                yield self._sse_error(f"Failed to create agent: {chatbot_id}")
+                return
+            
+            logger.info(f"[DelegationRouter] Created root agent with tools: {root_agent.name}")
+            
+            # 2. RAG 검색 (컨텍스트용)
+            rag_results = []
+            if db_ids:
+                try:
+                    rag_results = await self._search_rag(message, db_ids)
+                    logger.info(f"[DelegationRouter] RAG results: {len(rag_results)}")
+                except Exception as e:
+                    logger.warning(f"[DelegationRouter] RAG search failed: {e}")
+            
+            # 3. Runner 설정
+            session = await self.session_service.create_session(
+                app_name="delegation-router",
+                user_id=user_id,
+                session_id=session_id
+            )
+            
+            runner = Runner(
+                agent=root_agent,
+                app_name="delegation-router",
+                session_service=self.session_service
+            )
+            
+            # 4. 프롬프트 구성 (RAG 컨텍스트 포함)
+            if rag_results:
+                context = "\n\n[관련 문서]\n" + "\n".join([
+                    f"- {r.get('content', '')[:200]}..." for r in rag_results[:3]
+                ])
+                message_with_context = f"{message}\n\n{context}"
+            else:
+                message_with_context = message
+            
+            content = types.Content(role='user', parts=[types.Part(text=message_with_context)])
+            
+            # 5. Runner 실행 및 스트리밍
+            logger.info(f"[DelegationRouter] Starting runner with tools for session {session_id}")
+            full_response = []
+            
+            try:
+                async for event in runner.run_async(
+                    user_id=user_id,
+                    session_id=session_id,
+                    new_message=content
+                ):
+                    logger.debug(f"[DelegationRouter] Event received: {type(event).__name__}")
+                    
+                    # 모든 이벤트에서 content 체크
+                    if event.content and event.content.parts:
+                        for part in event.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                chunk = part.text
+                                full_response.append(chunk)
+                                logger.debug(f"[DelegationRouter] Yielding chunk: {chunk[:50]}...")
+                                yield self._sse_data(chunk)
+                            elif hasattr(part, 'function_call') and part.function_call:
+                                logger.info(f"[DelegationRouter] Tool call detected: {part.function_call.name}")
+                                tool_info = f"[도구 호출: {part.function_call.name}]"
+                                yield self._sse_data(tool_info)
+                
+                logger.info(f"[DelegationRouter] Runner completed, length: {len(full_response)}")
+                yield self._sse_done("".join(full_response))
+                
+            except Exception as e:
+                logger.error(f"[DelegationRouter] Runner error: {e}", exc_info=True)
+                yield self._sse_error(f"Runner error: {e}")
+                
+        except Exception as e:
+            logger.error(f"[DelegationRouter] Route error: {e}", exc_info=True)
+            yield self._sse_error(str(e))
+
     def _build_context_prompt(
         self,
         message: str,
