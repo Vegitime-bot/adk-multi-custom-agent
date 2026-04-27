@@ -415,16 +415,29 @@
   async function loadChatHistory(sessionIdToLoad) {
     if (!sessionIdToLoad) return;
     
+    console.log('[Debug] 히스토리 로드 시작:', sessionIdToLoad);
+    
     try {
       const res = await fetch(`${BASE}/api/sessions/${sessionIdToLoad}/messages?limit=30`);
+      console.log('[Debug] API 응답 상태:', res.status);
+      
       if (!res.ok) {
         console.warn('히스토리 로드 실패:', res.status);
+        const errorText = await res.text();
+        console.warn('[Debug] 에러 응답:', errorText);
         return;
       }
       
       const data = await res.json();
+      console.log('[Debug] API 응답 데이터:', data);
+      
       const messages = data.messages || [];
-      if (messages.length === 0) return;
+      console.log('[Debug] 메시지 개수:', messages.length);
+      
+      if (messages.length === 0) {
+        addSystemMsg('이전 대화 기록이 없습니다.');
+        return;
+      }
       
       // 기존 메시지 클리어 (시스템 메시지 제외)
       const existingMessages = chatContainer.querySelectorAll('.message:not(.system-msg)');
@@ -447,6 +460,7 @@
       addSystemMsg(`이전 대화 ${messages.length}개 로드됨`);
     } catch(e) {
       console.error('히스토리 로드 오류:', e);
+      addSystemMsg('대화 기록 로드 중 오류 발생');
     }
   }
 
