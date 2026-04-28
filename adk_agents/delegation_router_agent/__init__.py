@@ -331,12 +331,26 @@ class DelegationRouter:
                 session_service=self.session_service
             )
             
-            # 4. 프롬프트 구성 (RAG 컨텍스트 포함)
+            # 4. 프롬프트 구성 (RAG 컨텍스트 + 히스토리 포함)
+            context_parts = []
+            
+            # 이전 대화 히스토리 추가
+            if history:
+                context_parts.append("[이전 대화]")
+                for msg in history[-5:]:  # 최근 5개만
+                    role = msg.get("role", "user")
+                    content = msg.get("content", "")
+                    context_parts.append(f"{role}: {content}")
+                context_parts.append("\n[현재 질문]")
+            
+            # RAG 컨텍스트 추가
             if rag_results:
-                context = "\n\n[관련 문서]\n" + "\n".join([
-                    f"- {r.get('content', '')[:200]}..." for r in rag_results[:3]
-                ])
-                message_with_context = f"{message}\n\n{context}"
+                context_parts.append("[관련 문서]")
+                for r in rag_results[:3]:
+                    context_parts.append(f"- {r.get('content', '')[:200]}...")
+            
+            if context_parts:
+                message_with_context = "\n".join(context_parts) + f"\n\n{message}"
             else:
                 message_with_context = message
             
