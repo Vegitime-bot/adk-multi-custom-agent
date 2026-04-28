@@ -52,6 +52,17 @@ class ChatServiceV2:
             raise RuntimeError("ADK not available for ChatServiceV2")
         
         self.router = get_router()
+        
+        # ChatbotManager를 SubAgentFactory에 연결
+        if chatbot_manager:
+            try:
+                from adk_agents.sub_agent_factory import SubAgentFactory
+                factory = SubAgentFactory()
+                factory.set_chatbot_manager(chatbot_manager)
+                logger.info("[ChatServiceV2] Connected ChatbotManager to SubAgentFactory")
+            except Exception as e:
+                logger.warning(f"[ChatServiceV2] Failed to connect ChatbotManager: {e}")
+        
         logger.info("[ChatServiceV2] Initialized")
     
     async def chat_stream(

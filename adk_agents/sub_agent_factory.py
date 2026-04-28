@@ -37,7 +37,19 @@ class SubAgentFactory:
         
         self.model = model or self._get_default_model()
         self._agent_cache: Dict[str, Agent] = {}
+        self._chatbot_defs: Dict[str, Dict] = {}  # 동적 정의 캐시
+        self._chatbot_manager = None  # ChatbotManager 참조
         logger.info("[SubAgentFactory] Initialized")
+    
+    def set_chatbot_manager(self, chatbot_manager):
+        """ChatbotManager 주입"""
+        self._chatbot_manager = chatbot_manager
+        logger.info("[SubAgentFactory] ChatbotManager set")
+    
+    def set_chatbot_def(self, chatbot_id: str, chatbot_def: Dict):
+        """동적 챗봇 정의 주입"""
+        self._chatbot_defs[chatbot_id] = chatbot_def
+        logger.info(f"[SubAgentFactory] Chatbot definition injected: {chatbot_id}")
     
     def _get_default_model(self) -> LiteLlm:
         """기본 모델 설정 - config.py 사용"""
@@ -187,9 +199,19 @@ class SubAgentFactory:
         return "\n".join(lines) if lines else "(하위 챗봇 정보 없음)"
     
     def _get_chatbot_def(self, chatbot_id: str) -> Optional[Dict[str, Any]]:
-        """챗봇 정의 조회 (간략화된 버전)"""
-        # TODO: ChatbotManager 연동
-        # 임시: chatbots/ 디렉토리에서 JSON 로드
+        """챗봇 정의 조회 (동적 정의 → ChatbotManager → JSON 파일 순)"""
+        # 1. 동적 정의 캐시 먼저 확인
+        if chatbot_id in self._chatbot_defs:
+            return self._chatbot_defs[chatbot_id]
+        
+        # 2. ChatbotManager에서 조회
+        if self._chatbot_manager:
+            chatbot = self._chatbot_manager.get_active(chatbot_id)
+            if chatbot:
+                # ChatbotDef 객체를 Dict로 변환
+                return self._chatbot_def_to_dict(chatbot)
+        
+        # 3. JSON 파일에서 로드 (Fallback)
         chatbots_dir = PROJECT_ROOT / "chatbots"
         json_file = chatbots_dir / f"{chatbot_id}.json"
         
@@ -200,6 +222,26 @@ class SubAgentFactory:
         
         logger.warning(f"[SubAgentFactory] Chatbot definition not found: {chatbot_id}")
         return None
+    
+    def _chatbot_def_to_dict(self, chatbot_def) -> Dict:
+        """ChatbotDef 객체를 Dict로 변환"""
+        if isinstance(chatbot_def, dict):
+            return chatbot_def
+        
+        # ChatbotDef 객체 속성 추출
+        result = {"id": getattr(chatbot_def, 'id', '')}
+        if hasattr(chatbot_def, 'name'):
+            result['name'] = chatbot_def.name
+        if hasattr(chatbot_def, 'description'):
+            result['description'] = chatbot_def.description
+        if hasattr(chatbot_def, 'capabilities'):
+            result['capabilities'] = chatbot_def.capabilities
+        if hasattr(chatbot_def, 'sub_chatbots'):
+            result['sub_chatbots'] = chatbot_def.sub_chatbots
+        if hasattr(chatbot_def, 'retrieval'):
+            result['retrieval'] = chatbot_def.retrieval
+        
+        return result
     
     def clear_cache(self):
         """에이전트 캐시 초기화"""
