@@ -277,6 +277,13 @@ class SubAgentFactory:
         
         # 시스템 프롬프트 구성 (하위 챗봘 정보 포함)
         system_prompt = capabilities.get("system_prompt", "")
+        
+        # RAG 기반 답변 시 출처 명시 지시
+        system_prompt += "\n\n[출처 명시 규칙]\n"
+        system_prompt += "답변 시 참고한 문서의 출처(데이터베이스 ID, 문서 제목 등)를 명확히 표시해주세요.\n"
+        system_prompt += "예시: '이 내용은 [출처: db_hr_policy] 문서를 참고하였습니다.' 또는 '참고: db_tech_overview'\n"
+        system_prompt += "여러 출처를 참고한 경우 모든 출처를 나열해주세요.\n"
+        
         if sub_chatbots:
             sub_info = self._format_sub_chatbots_for_tools(sub_chatbots)
             system_prompt += f"\n\n[사용 가능한 하위 전문가 도구]\n{sub_info}\n\n"

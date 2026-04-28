@@ -384,18 +384,24 @@ class DelegationRouter:
         rag_results: List[Dict],
         confidence: float
     ) -> str:
-        """컨텍스트가 포함된 프롬프트 구성"""
+        """컨텍스트가 포함된 프롬프트 구성 (출처 포함)"""
         if not rag_results:
             return message
 
         context_parts = ["[참고 문서]"]
+        sources = []
         for i, result in enumerate(rag_results[:3], 1):
             content = result.get("content", "")[:200]
             score = result.get("score", 0)
-            context_parts.append(f"{i}. (유사도: {score:.2f}) {content}...")
+            source = result.get("source", result.get("db_id", "알 수 없음"))
+            context_parts.append(f"{i}. [출처: {source}] (유사도: {score:.2f}) {content}...")
+            sources.append(source)
 
         context_parts.append(f"\n[신뢰도: {confidence:.1f}%]")
         context_parts.append(f"\n[사용자 질문]\n{message}")
+        context_parts.append(f"\n[지시사항]\n위 참고 문서를 바탕으로 답변해주세요. 답변 마지막에 사용된 출처를 명시해주세요.")
+        if sources:
+            context_parts.append(f"\n[사용된 출처] {', '.join(set(sources))}")
 
         return "\n".join(context_parts)
 
