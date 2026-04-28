@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-tech-backend",
+  "id": "chatbot_tech_backend",
   "name": "백엔드 개발 전문 챗봇",
   "description": "Python, FastAPI, 데이터베이스, API 설계 등 백엔드 개발에 특화된 하위 전문가",
   "active": true,
@@ -23,6 +23,6 @@
     "max_messages": 20
   },
   "sub_chatbots": [],
-  "parent_id": "chatbot-tech",
+  "parent_id": "chatbot_tech",
   "level": 2
 }

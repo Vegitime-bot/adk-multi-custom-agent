@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-tech-frontend",
+  "id": "chatbot_tech_frontend",
   "name": "프론트엔드 개발 전문 챗봇",
   "description": "React, Vue, JavaScript, CSS, UI/UX 등 프론트엔드 개발에 특화된 하위 전문가",
   "active": true,
@@ -23,6 +23,6 @@
     "max_messages": 20
   },
   "sub_chatbots": [],
-  "parent_id": "chatbot-tech",
+  "parent_id": "chatbot_tech",
   "level": 2
 }

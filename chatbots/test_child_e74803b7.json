@@ -1,12 +1,14 @@
 {
-  "id": "test-chatbot-544788e9",
-  "name": "Test Chatbot 544788e9",
-  "description": "This is an automated test chatbot created by E2E tests",
+  "id": "test_child_e74803b7",
+  "name": "테스트 하위 챗봘",
+  "description": "상위 Agent의 하위 챗봘",
   "active": true,
   "capabilities": {
-    "db_ids": [],
+    "db_ids": [
+      "db_hr_policy"
+    ],
     "model": "kimi-k2.5:cloud",
-    "system_prompt": "You are a helpful test assistant. Keep responses brief."
+    "system_prompt": "테스트 프롬프트"
   },
   "policy": {
     "temperature": 0.3,

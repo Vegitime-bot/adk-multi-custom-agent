@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-d",
+  "id": "chatbot_d",
   "name": "AI 아키텍처 챗봇",
   "description": "AI Agent, RAG, 멀티 테넌트 아키텍처 설계 지원 챗봇 (Tool 모드)",
   "active": true,

@@ -1,12 +1,12 @@
 {
-  "id": "hierarchy-test-7e03ab01",
-  "name": "하위 테스트 챗봘",
-  "description": "상위 Agent 테스트",
+  "id": "test_remove_9162446d",
+  "name": "제거 테스트",
+  "description": "상위에서 제거될 챗봘",
   "active": true,
   "capabilities": {
     "db_ids": [],
     "model": "kimi-k2.5:cloud",
-    "system_prompt": "test"
+    "system_prompt": "테스트"
   },
   "policy": {
     "temperature": 0.3,

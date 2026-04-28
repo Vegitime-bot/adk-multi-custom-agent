@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-rtl-synthesis",
+  "id": "chatbot_rtl_synthesis",
   "name": "RTL 합성 전문 챗봇",
   "description": "RTL 합성, 최적화, 타이밍 분석, FPGA 구현에 특화된 하위 전문가",
   "active": true,
@@ -23,6 +23,6 @@
     "max_messages": 20
   },
   "sub_chatbots": [],
-  "parent_id": "chatbot-tech",
+  "parent_id": "chatbot_tech",
   "level": 2
 }

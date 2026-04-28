@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-rtl-verilog",
+  "id": "chatbot_rtl_verilog",
   "name": "Verilog HDL 전문 챗봇",
   "description": "Verilog HDL 문법, 시뮬레이션, 검증에 특화된 RTL 하위 전문가",
   "active": true,
@@ -23,6 +23,6 @@
     "max_messages": 20
   },
   "sub_chatbots": [],
-  "parent_id": "chatbot-tech",
+  "parent_id": "chatbot_tech",
   "level": 2
 }

@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-a",
+  "id": "chatbot_a",
   "name": "기술지원 챗봇",
   "description": "기술 문서 및 FAQ 기반 사내 기술지원 챗봇",
   "active": true,

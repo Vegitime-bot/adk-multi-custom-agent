@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-b",
+  "id": "chatbot_b",
   "name": "HR 정책 챗봇",
   "description": "인사 규정 및 복리후생 안내 챗봇 (Tool 모드)",
   "active": true,

@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-tech-devops",
+  "id": "chatbot_tech_devops",
   "name": "DevOps 인프라 전문 챗봇",
   "description": "Docker, Kubernetes, CI/CD, 클라우드 인프라 등 DevOps에 특화된 하위 전문가",
   "active": true,
@@ -23,6 +23,6 @@
     "max_messages": 20
   },
   "sub_chatbots": [],
-  "parent_id": "chatbot-tech",
+  "parent_id": "chatbot_tech",
   "level": 2
 }

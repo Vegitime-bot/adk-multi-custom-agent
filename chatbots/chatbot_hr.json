@@ -1,5 +1,5 @@
 {
-  "id": "chatbot-hr",
+  "id": "chatbot_hr",
   "name": "인사지원 상위 챗봇",
   "description": "인사 관련 모든 문의를 처리하는 상위 챗봇. 세부 사항은 하위 전문가에게 위임",
   "active": true,
@@ -8,7 +8,7 @@
       "db_hr_overview"
     ],
     "model": "kimi-k2.5:cloud",
-    "system_prompt": "당신은 사내 인사지원의 상위 어시스턴트입니다.\n인사 관련 문의를 받아 먼저 답변을 시도합니다.\n\n답변 시 다음을 반드시 준수하세요:\n1. 먼저 질문에 대한 초기 답변을 생성하세요\n2. 답변 끝에 'CONFIDENCE: XX' 형식으로 신뢰도를 표시하세요 (0-100)\n3. 신뢰도가 70% 미만이거나, 세부 규정/정책이 필요한 경우 하위 전문가 호출을 제안하세요\n\n하위 전문가 목록:\n- chatbot-hr-policy: 인사 정책 및 규정 전문가\n- chatbot-hr-benefit: 복리후생 및 급여 전문가\n\n상위 Agent(chatbot-company)로부터 위임받은 경우, 축적된 컨텍스트를 활용하여 답변하세요.\n\n모르는 내용은 모른다고 솔직하게 답변하세요.\n답변은 한국어로 작성하세요."
+    "system_prompt": "당신은 사내 인사지원의 상위 어시스턴트입니다.\n인사 관련 문의를 받아 먼저 답변을 시도합니다.\n\n답변 시 다음을 반드시 준수하세요:\n1. 먼저 질문에 대한 초기 답변을 생성하세요\n2. 답변 끝에 'CONFIDENCE: XX' 형식으로 신뢰도를 표시하세요 (0-100)\n3. 신뢰도가 70% 미만이거나, 세부 규정/정책이 필요한 경우 하위 전문가 호출을 제안하세요\n\n하위 전문가 목록:\n- chatbot_hr_policy: 인사 정책 및 규정 전문가\n- chatbot_hr_benefit: 복리후생 및 급여 전문가\n\n상위 Agent(chatbot_company)로부터 위임받은 경우, 축적된 컨텍스트를 활용하여 답변하세요.\n\n모르는 내용은 모른다고 솔직하게 답변하세요.\n답변은 한국어로 작성하세요."
   },
   "policy": {
     "temperature": 0.3,
@@ -30,31 +30,31 @@
   },
   "sub_chatbots": [
     {
-      "id": "chatbot-hr-policy",
+      "id": "chatbot_hr_policy",
       "level": 1,
       "default_role": "agent"
     },
     {
-      "id": "chatbot-hr-benefit",
+      "id": "chatbot_hr_benefit",
       "level": 1,
       "default_role": "agent"
     },
     {
-      "id": "test-child-e74803b7",
+      "id": "test_child_e74803b7",
       "level": 1,
       "default_role": "agent"
     },
     {
-      "id": "test-remove-9162446d",
+      "id": "test_remove_9162446d",
       "level": 1,
       "default_role": "agent"
     },
     {
-      "id": "hierarchy-test-7e03ab01",
+      "id": "hierarchy_test_7e03ab01",
       "level": 1,
       "default_role": "agent"
     }
   ],
-  "parent_id": "chatbot-company",
+  "parent_id": "chatbot_company",
   "level": 1
 }

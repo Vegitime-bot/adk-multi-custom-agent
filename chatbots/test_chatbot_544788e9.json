@@ -1,12 +1,12 @@
 {
-  "id": "test-remove-9162446d",
-  "name": "제거 테스트",
-  "description": "상위에서 제거될 챗봘",
+  "id": "test_chatbot_544788e9",
+  "name": "Test Chatbot 544788e9",
+  "description": "This is an automated test chatbot created by E2E tests",
   "active": true,
   "capabilities": {
     "db_ids": [],
     "model": "kimi-k2.5:cloud",
-    "system_prompt": "테스트"
+    "system_prompt": "You are a helpful test assistant. Keep responses brief."
   },
   "policy": {
     "temperature": 0.3,

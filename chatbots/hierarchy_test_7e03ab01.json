@@ -1,14 +1,12 @@
 {
-  "id": "test-child-e74803b7",
-  "name": "테스트 하위 챗봘",
-  "description": "상위 Agent의 하위 챗봘",
+  "id": "hierarchy_test_7e03ab01",
+  "name": "하위 테스트 챗봘",
+  "description": "상위 Agent 테스트",
   "active": true,
   "capabilities": {
-    "db_ids": [
-      "db_hr_policy"
-    ],
+    "db_ids": [],
     "model": "kimi-k2.5:cloud",
-    "system_prompt": "테스트 프롬프트"
+    "system_prompt": "test"
   },
   "policy": {
     "temperature": 0.3,
