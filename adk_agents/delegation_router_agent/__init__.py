@@ -146,30 +146,33 @@ class DelegationRouter:
         return self.factory._get_chatbot_def(chatbot_id)
 
     async def _search_rag(self, query: str, db_ids: List[str]) -> List[Dict]:
-        """RAG 검색 - Mock DB 지원"""
-        # Mock DB 모드: 환경변수 확인
-        use_mock = os.getenv("USE_MOCK_DB", "false").lower() == "true"
-        
-        if use_mock:
-            logger.info(f"[DelegationRouter] Using Mock RAG for {db_ids}")
-            return self._mock_search_rag(query, db_ids)
-        
+        """RAG 검색 - 실제 ingestion 서버 연결"""
         if not self.ingestion_client:
+            logger.warning("[DelegationRouter] IngestionClient not available")
             return []
-
-        results = []
-        for db_id in db_ids:
-            try:
-                search_results = await self.ingestion_client.search_async(
-                    db_id=db_id,
+        
+        # 동기 search를 비동기로 실행 (Python 3.9 호환)
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        # ThreadPoolExecutor로 동기 함수를 비동기로 실행
+        loop = asyncio.get_event_loop()
+        executor = ThreadPoolExecutor(max_workers=4)
+        
+        try:
+            results = await loop.run_in_executor(
+                executor,
+                lambda: self.ingestion_client.search(
+                    db_ids=db_ids,
                     query=query,
-                    top_k=5
+                    k=5
                 )
-                results.extend(search_results)
-            except Exception as e:
-                logger.warning(f"[DelegationRouter] Search failed for {db_id}: {e}")
-
-        return results
+            )
+            logger.info(f"[DelegationRouter] RAG search returned {len(results)} results for db_ids={db_ids}")
+            return results
+        except Exception as e:
+            logger.error(f"[DelegationRouter] RAG search error: {e}")
+            return []
     
     def _mock_search_rag(self, query: str, db_ids: List[str]) -> List[Dict]:
         """Mock RAG 검색 결과"""

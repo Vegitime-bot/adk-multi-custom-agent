@@ -1,0 +1,32 @@
+{
+  "id": "bot_tech",
+  "name": "테크봇",
+  "description": "테크니컬한 챗봇, AI, 백엔드, frontend 부분",
+  "active": true,
+  "capabilities": {
+    "db_ids": [
+      "db_backend",
+      "db_devops",
+      "db_frontend"
+    ],
+    "model": "kimi-k2.5:cloud",
+    "system_prompt": "테크니컬에 대해 전문적으로 알고 있는 챗봇 입니다"
+  },
+  "policy": {
+    "temperature": 0.3,
+    "max_tokens": 1024,
+    "stream": true,
+    "supported_modes": [
+      "tool",
+      "agent"
+    ],
+    "default_mode": "agent",
+    "max_messages": 20
+  },
+  "sub_chatbots": [],
+  "keywords": [
+    "tech",
+    "백엔드",
+    "프론트엔드"
+  ]
+}
