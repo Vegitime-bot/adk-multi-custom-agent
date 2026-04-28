@@ -100,6 +100,7 @@ class ChatServiceV2:
             
             # 2. 권한 확인된 DB ID 목록
             db_ids = self._get_authorized_db_ids(chatbot, user_id)
+            logger.info(f"[ChatServiceV2] db_ids for {chatbot_id}: {db_ids}")
             
             # 3. 대화 히스토리 로드
             history = []

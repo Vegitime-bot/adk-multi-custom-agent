@@ -11,6 +11,7 @@ retrieval/ingestion_client.py - Ingestion 서버 API 클라이언트
 """
 import requests
 import urllib3
+from typing import Optional
 
 from backend.config import settings
 
@@ -19,7 +20,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class IngestionClient:
-    def __init__(self, base_url: str | None = None, api_key: str | None = None):
+    def __init__(self, base_url: Optional[str] = None, api_key: Optional[str] = None):
         self._base_url = (base_url or settings.INGESTION_BASE_URL).rstrip("/")
         self._api_key = api_key or settings.INGESTION_API_KEY
         self._session = requests.Session()
@@ -34,7 +35,7 @@ class IngestionClient:
         db_ids: list[str],
         query: str,
         k: int = 5,
-        filter_metadata: dict | None = None,
+        filter_metadata: Optional[dict] = None,
         threshold: float = 0.0,
     ) -> list[dict]:
         """
@@ -53,9 +54,9 @@ class IngestionClient:
 
         payload: dict = {
             "query": query,
-            "index_names": db_ids,  # 변경: db_ids → index_names
-            "top_k": k,  # 변경: k → top_k
-            "threshold": threshold,  # 추가
+            "index_names": db_ids,
+            "top_k": k,
+            "threshold": threshold,
         }
         
         if filter_metadata:
@@ -90,7 +91,7 @@ class IngestionClient:
         db_id: str,
         query: str,
         k: int = 5,
-        filter_metadata: dict | None = None,
+        filter_metadata: Optional[dict] = None,
         threshold: float = 0.0,
     ) -> list[dict]:
         """
@@ -106,37 +107,83 @@ class IngestionClient:
 
     def search_multi(
         self,
+        queries: list[str],
         db_ids: list[str],
-        query: str,
         k: int = 5,
-        filter_metadata: dict | None = None,
+        filter_metadata: Optional[dict] = None,
         threshold: float = 0.0,
-    ) -> list[dict]:
+    ) -> dict[str, list[dict]]:
         """
-        다중 인덱스 검색 (backward compatibility)
+        다중 쿼리 검색
+        
+        Args:
+            queries: 검색 쿼리 목록
+            db_ids: 검색할 인덱스 이름 목록
+            k: 각 쿼리당 반환할 결과 수
+            filter_metadata: 필터 메타데이터 (선택)
+            threshold: 유사도 임계값 (선택, 기본 0)
+        
+        Returns:
+            {query: results} 형태의 dict
         """
-        return self.search(
-            db_ids=db_ids,
-            query=query,
-            k=k,
-            filter_metadata=filter_metadata,
-            threshold=threshold,
-        )
+        results = {}
+        for query in queries:
+            results[query] = self.search(
+                db_ids=db_ids,
+                query=query,
+                k=k,
+                filter_metadata=filter_metadata,
+                threshold=threshold,
+            )
+        return results
+
+    def format_results(
+        self,
+        results: list[dict],
+        max_length: int = 300,
+        show_score: bool = True,
+    ) -> str:
+        """
+        검색 결과를 문자열로 포맷팅
+        
+        Args:
+            results: 검색 결과 목록
+            max_length: 각 결과당 최대 길이
+            show_score: 점수 표시 여부
+        
+        Returns:
+            포맷팅된 문자열
+        """
+        if not results:
+            return "검색 결과가 없습니다."
+        
+        lines = []
+        for i, result in enumerate(results, 1):
+            content = result.get("content", "")
+            if len(content) > max_length:
+                content = content[:max_length] + "..."
+            
+            line = f"{i}. {content}"
+            if show_score:
+                score = result.get("score", 0)
+                line += f" [score: {score:.3f}]"
+            lines.append(line)
+        return "\n\n".join(lines)
 
 
-def format_context(results: list[dict]) -> str:
-    """검색 결과를 LLM 프롬프트에 삽입할 컨텍스트 문자열로 변환한다."""
-    if not results:
-        return "관련 문서를 찾지 못했습니다."
-    lines = []
-    for i, r in enumerate(results, 1):
-        content = r.get("content", r.get("text", str(r)))
-        source = r.get("source", r.get("doc_id", r.get("index_name", "")))
-        score = r.get("score", r.get("similarity", None))
-        line = f"[{i}] {content}"
-        if source:
-            line += f" (출처: {source})"
-        if score is not None:
-            line += f" [score: {score:.3f}]"
-        lines.append(line)
-    return "\n\n".join(lines)
+# 모듈 레벨 싱글톤 인스턴스
+_ingestion_client: Optional[IngestionClient] = None
+
+
+def get_ingestion_client() -> IngestionClient:
+    """IngestionClient 싱글톤 반환"""
+    global _ingestion_client
+    if _ingestion_client is None:
+        _ingestion_client = IngestionClient()
+    return _ingestion_client
+
+# 모듈 레벨 helper 함수 (하위 호환)
+def format_context(results: list[dict], max_length: int = 300, show_score: bool = True) -> str:
+    """검색 결과를 문자열로 포맷팅 (하위 호환용)"""
+    client = get_ingestion_client()
+    return client.format_results(results, max_length=max_length, show_score=show_score)
