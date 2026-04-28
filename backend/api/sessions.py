@@ -1,23 +1,19 @@
 """
-backend/api/sessions.py - Session Management API (Mock Version)
+backend/api/sessions.py - ADK 기반 세션 관리 API
+
+ADK InMemorySessionService를 사용하여 세션을 관리합니다.
+기존 MockRepository 기반에서 ADK로 완전히 대체됩니다.
 """
+import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query, HTTPException
+from datetime import datetime
+from fastapi import APIRouter, Query, HTTPException, Request
 from pydantic import BaseModel
 
-# Mock Repository 사용 (PostgreSQL 없이 파일 기반)
-from backend.repository.mock_repository import (
-    MockSessionRepository,
-    MockMessageRepository,
-    MockDelegationRepository
-)
+from backend.adk.adk_session_wrapper import get_session_wrapper
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["sessions"])
-
-# 전역 Repository 인스턴스
-session_repo = MockSessionRepository()
-message_repo = MockMessageRepository()
-delegation_repo = MockDelegationRepository()
 
 
 # ── 스키마 ───────────────────────────────────────────────────────
@@ -65,13 +61,26 @@ class MessageListResponse(BaseModel):
 # ── API 엔드포인트 ────────────────────────────────────────────────
 @router.post("/sessions", response_model=SessionResponse)
 async def create_session(request: SessionCreateRequest):
-    """새 세션 생성"""
-    session = session_repo.create(
-        user_id=request.user_id,
+    """새 ADK 세션 생성"""
+    wrapper = get_session_wrapper()
+    
+    # ADK 세션 생성
+    session = wrapper.get_or_create(
         chatbot_id=request.chatbot_id,
+        user_knox_id=request.user_id,
         session_id=request.session_id
     )
-    return SessionResponse(**session)
+    
+    now = datetime.utcnow().isoformat()
+    return SessionResponse(
+        session_id=session.session_id,
+        user_id=session.user_knox_id,
+        chatbot_id=session.chatbot_id,
+        created_at=now,
+        updated_at=now,
+        last_accessed=now,
+        message_count=0
+    )
 
 
 @router.get("/sessions", response_model=SessionListResponse)
@@ -80,12 +89,30 @@ async def list_sessions(
     limit: int = Query(default=30, ge=1, le=100),
     offset: int = Query(default=0, ge=0)
 ):
-    """사용자별 세션 목록 조회 (페이지네이션)"""
-    sessions = session_repo.list_by_user(user_id, limit, offset)
-    total = session_repo.get_user_session_count(user_id)
+    """ADK 사용자별 세션 목록 조회"""
+    wrapper = get_session_wrapper()
+    
+    # ADK에서 세션 목록 조회
+    all_sessions = wrapper.list_sessions(user_knox_id=user_id)
+    
+    # 페이징 처리
+    total = len(all_sessions)
+    paginated = all_sessions[offset:offset + limit]
+    
+    sessions = []
+    for s in paginated:
+        sessions.append(SessionResponse(
+            session_id=s.get("session_id", ""),
+            user_id=s.get("user_knox_id", user_id),
+            chatbot_id=s.get("chatbot_id", ""),
+            created_at=s.get("created_at", ""),
+            updated_at=datetime.utcnow().isoformat(),
+            last_accessed=datetime.utcnow().isoformat(),
+            message_count=0  # ADK는 메시지 카운트 별도 관리
+        ))
     
     return SessionListResponse(
-        sessions=[SessionResponse(**s) for s in sessions],
+        sessions=sessions,
         total=total,
         limit=limit,
         offset=offset
@@ -94,72 +121,105 @@ async def list_sessions(
 
 @router.get("/sessions/{session_id}", response_model=SessionResponse)
 async def get_session(session_id: str):
-    """세션 상세 조회"""
-    session = session_repo.get_by_id(session_id)
+    """ADK 세션 상세 조회"""
+    wrapper = get_session_wrapper()
+    
+    session = wrapper.get_session(session_id)
     
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    return SessionResponse(**session)
-
-
-@router.get("/sessions/{session_id}/messages", response_model=MessageListResponse)
-async def get_session_messages(
-    session_id: str,
-    limit: int = Query(default=30, ge=1, le=100),
-    offset: int = Query(default=0, ge=0)
-):
-    """세션별 메시지 조회 (페이지네이션)"""
-    # 세션 존재 확인
-    session = session_repo.get_by_id(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    # 메시지 조회
-    messages = message_repo.get_by_session(session_id, limit, offset)
-    total = message_repo.get_message_count(session_id)
-    
-    return MessageListResponse(
-        messages=[MessageResponse(**m) for m in messages],
-        total=total,
-        limit=limit,
-        offset=offset
+    now = datetime.utcnow().isoformat()
+    return SessionResponse(
+        session_id=session.session_id,
+        user_id=session.user_knox_id,
+        chatbot_id=session.chatbot_id,
+        created_at=now,
+        updated_at=now,
+        last_accessed=now,
+        message_count=0
     )
 
 
 @router.delete("/sessions/{session_id}")
 async def delete_session(session_id: str):
-    """세션 삭제 (관련 메시지, 위임 체인도 함께 삭제)"""
-    import os
-    from pathlib import Path
+    """ADK 세션 삭제"""
+    wrapper = get_session_wrapper()
     
-    session = session_repo.get_by_id(session_id)
+    # 세션 존재 확인
+    session = wrapper.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # 세션 데이터 로드
-    from backend.repository.mock_repository import _load_sessions, _save_sessions, DATA_DIR
+    # ADK 세션 종료
+    success = wrapper.close_session(session_id)
     
-    sessions = _load_sessions()
-    if session_id in sessions:
-        del sessions[session_id]
-        _save_sessions(sessions)
+    return {
+        "status": "success" if success else "error",
+        "message": f"Session {session_id} deleted"
+    }
+
+
+@router.get("/sessions/{session_id}/messages")
+async def get_session_messages(
+    session_id: str,
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0)
+):
+    """
+    ADK 세션 메시지 조회
     
-    # 메시지 파일 삭제
-    msg_file = DATA_DIR / "messages" / f"{session_id}.json"
-    if msg_file.exists():
-        msg_file.unlink()
+    현재 ADK InMemorySessionService는 이벤트 히스토리를 메모리에 유지합니다.
+    영구 저장이 필요하면 conversation_logs 테이블과 연동하세요.
+    """
+    wrapper = get_session_wrapper()
     
-    return {"status": "success", "message": f"Session {session_id} deleted"}
+    # 세션 존재 확인
+    session = wrapper.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # ADK 세션에서 이벤트 추출 (events 속성이 있는 경우)
+    messages = []
+    try:
+        # 내부 ADK 세션 접근
+        adk_sessions = getattr(wrapper._session_service, '_sessions', {})
+        for key, adk_session in adk_sessions.items():
+            if adk_session.session_id == session_id:
+                if hasattr(adk_session, 'events'):
+                    for i, event in enumerate(adk_session.events):
+                        messages.append({
+                            "message_id": i + 1,
+                            "role": getattr(event, 'role', 'unknown'),
+                            "content": getattr(event, 'content', ''),
+                            "tokens_used": 0,
+                            "latency_ms": 0,
+                            "confidence_score": None,
+                            "delegated_to": None,
+                            "created_at": getattr(event, 'timestamp', datetime.utcnow().isoformat())
+                        })
+                break
+    except Exception as e:
+        logger.warning(f"Failed to get ADK events: {e}")
+    
+    # 페이징
+    total = len(messages)
+    paginated = messages[offset:offset + limit]
+    
+    return {
+        "messages": paginated,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
 
 
 @router.post("/api/admin/cleanup-sessions")
 async def cleanup_old_sessions(days: int = Query(default=30, ge=1)):
-    """오래된 세션 정리 (관리자용)"""
-    deleted_count = session_repo.delete_old_sessions(days)
-    
+    """오래된 ADK 세션 정리 (관리자용)"""
+    # ADK는 자동으로 메모리를 관리하지만, 필요시 수동 정리
+    # 현재 InMemorySessionService는 TTL을 지원하지 않음
     return {
-        "status": "success",
-        "deleted_count": deleted_count,
-        "older_than_days": days
+        "status": "info",
+        "message": "ADK InMemorySessionService does not support manual cleanup. Sessions persist in memory until server restart."
     }
