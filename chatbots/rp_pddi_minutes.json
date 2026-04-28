@@ -1,0 +1,1 @@
+{"id": "rp_pddi_minutes", "name": "PDDI 회의록", "description": "PDDI 회의록 관련 문의 처리", "capabilities": {"system_prompt": "당신은 PDDI 회의록 관리 챗봇입니다."}, "sub_chatbots": []}
