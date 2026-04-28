@@ -287,14 +287,18 @@ class SubAgentFactory:
             # ADK Agent 이름은 유효한 식별자여야 함 (하이픈 -> 언더스코어)
             agent_name = chatbot_id.replace("-", "_")
             
-            root_agent = Agent(
+            # tools가 빈 리스트면 None 대신 빈 리스트를 그대로 전달하거나 생략
+            agent_kwargs = dict(
                 name=agent_name,
                 model=self.model,
                 description=chatbot_def.get("description", ""),
                 instruction=system_prompt,
-                tools=tools if tools else None,
                 output_key=f"{chatbot_id}_response"
             )
+            if tools:
+                agent_kwargs["tools"] = tools
+            
+            root_agent = Agent(**agent_kwargs)
             logger.info(f"[SubAgentFactory] Created root agent {agent_name} with {len(tools)} tools")
             return root_agent
         except Exception as e:
