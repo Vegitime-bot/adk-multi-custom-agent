@@ -243,13 +243,23 @@ class DelegationRouter:
         rag_context: List[Dict],
         confidence: float
     ) -> AsyncGenerator[str, None]:
-        """Agent 실행 및 스트리밍"""
+        """Agent 실행 및 스트리밍 (ADK 세션 관리 사용)"""
 
-        session = await self.session_service.create_session(
+        # 기존 세션이 있으면 가져오고, 없으면 생성
+        session = await self.session_service.get_session(
             app_name="delegation-router",
             user_id=user_id,
             session_id=session_id
         )
+        if not session:
+            session = await self.session_service.create_session(
+                app_name="delegation-router",
+                user_id=user_id,
+                session_id=session_id
+            )
+            logger.info(f"[DelegationRouter] Created new ADK session: {session_id}")
+        else:
+            logger.info(f"[DelegationRouter] Reusing existing ADK session: {session_id} (events: {len(session.events)})")
 
         runner = Runner(
             agent=agent,
@@ -318,12 +328,22 @@ class DelegationRouter:
                 except Exception as e:
                     logger.warning(f"[DelegationRouter] RAG search failed: {e}")
             
-            # 3. Runner 설정
-            session = await self.session_service.create_session(
+            # 3. Runner 설정 (ADK 세션 관리 사용)
+            # 기존 세션이 있으면 가져오고, 없으면 생성
+            session = await self.session_service.get_session(
                 app_name="delegation-router",
                 user_id=user_id,
                 session_id=session_id
             )
+            if not session:
+                session = await self.session_service.create_session(
+                    app_name="delegation-router",
+                    user_id=user_id,
+                    session_id=session_id
+                )
+                logger.info(f"[DelegationRouter] Created new ADK session: {session_id}")
+            else:
+                logger.info(f"[DelegationRouter] Reusing existing ADK session: {session_id} (events: {len(session.events)})")
             
             runner = Runner(
                 agent=root_agent,
@@ -331,26 +351,12 @@ class DelegationRouter:
                 session_service=self.session_service
             )
             
-            # 4. 프롬프트 구성 (RAG 컨텍스트 + 히스토리 포함)
-            context_parts = []
-            
-            # 이전 대화 히스토리 추가
-            if history:
-                context_parts.append("[이전 대화]")
-                for msg in history[-5:]:  # 최근 5개만
-                    role = msg.get("role", "user")
-                    content = msg.get("content", "")
-                    context_parts.append(f"{role}: {content}")
-                context_parts.append("\n[현재 질문]")
-            
-            # RAG 컨텍스트 추가
+            # 4. 프롬프트 구성 (RAG 컨텍스트만 포함, 히스토리는 ADK가 관리)
             if rag_results:
-                context_parts.append("[관련 문서]")
-                for r in rag_results[:3]:
-                    context_parts.append(f"- {r.get('content', '')[:200]}...")
-            
-            if context_parts:
-                message_with_context = "\n".join(context_parts) + f"\n\n{message}"
+                context = "\n\n[관련 문서]\n" + "\n".join([
+                    f"- {r.get('content', '')[:200]}..." for r in rag_results[:3]
+                ])
+                message_with_context = f"{message}\n\n{context}"
             else:
                 message_with_context = message
             
