@@ -145,6 +145,14 @@ def create_app() -> FastAPI:
     app.include_router(permissions_router)
     app.include_router(conversations_router)
     app.include_router(workflow_router)
+    
+    # 디버그 라우터 등록 (개발/디버깅용)
+    try:
+        from backend.api.debug import router as debug_router
+        app.include_router(debug_router, prefix="/api")
+        logger.info("Debug API router registered at /api/debug")
+    except Exception as e:
+        logger.warning(f"Debug API router not loaded: {e}")
 
     # ── Admin 페이지 라우팅 ─────────────────────────────────────────
     # 테스트 및 사용자 편의를 위한 /admin 경로 추가
