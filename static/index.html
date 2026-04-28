@@ -108,7 +108,34 @@
       background: #f9f9f9; border-top: 1px solid #eee;
     }
 
-    .typing-indicator { color: #999; font-style: italic; }
+    .typing-indicator { 
+      color: #1a73e8; 
+      font-style: normal;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: #e8f0fe;
+      border-radius: 12px;
+      max-width: 80%;
+      animation: pulse 1.5s infinite;
+    }
+    
+    .typing-indicator::before {
+      content: "⏳";
+      font-size: 1.2rem;
+      animation: spin 2s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
 
     /* 토글 스위치 스타일 - 개선된 버전 */
     .toggle-switch {
@@ -555,7 +582,7 @@
 
     const assistantDiv = addMessage('assistant', '');
     assistantDiv.classList.add('typing-indicator');
-    assistantDiv.textContent = '답변 생성 중...';
+    assistantDiv.textContent = '잠시만 기다려 주세요... 답변을 준비하고 있습니다 ⏳';
 
     try {
       const res = await fetch(`${BASE}/api/chat`, {
