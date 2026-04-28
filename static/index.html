@@ -607,9 +607,7 @@
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
       let fullText = '';
-
-      assistantDiv.classList.remove('typing-indicator');
-      assistantDiv.textContent = '';
+      let firstChunk = true;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -625,6 +623,11 @@
                   const data = JSON.parse(raw);
                   // Handle {chunk: "..."} format from ChatServiceV2
                   if (data.chunk) {
+                    if (firstChunk) {
+                      assistantDiv.classList.remove('typing-indicator');
+                      assistantDiv.textContent = '';
+                      firstChunk = false;
+                    }
                     fullText += data.chunk;
                     assistantDiv.innerHTML = parseMarkdownTable(fullText);
                   } else if (data.done) {
@@ -655,6 +658,11 @@
               const data = JSON.parse(raw);
               // Handle {chunk: "..."} format from ChatServiceV2
               if (data.chunk) {
+                if (firstChunk) {
+                  assistantDiv.classList.remove('typing-indicator');
+                  assistantDiv.textContent = '';
+                  firstChunk = false;
+                }
                 fullText += data.chunk;
                 assistantDiv.innerHTML = parseMarkdownTable(fullText);
               } else if (data.done) {
