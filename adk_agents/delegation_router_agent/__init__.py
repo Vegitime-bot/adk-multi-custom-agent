@@ -169,6 +169,8 @@ class DelegationRouter:
                 )
             )
             logger.info(f"[DelegationRouter] RAG search returned {len(results)} results for db_ids={db_ids}")
+            for i, r in enumerate(results):
+                logger.info(f"[DelegationRouter] RAG result {i}: source={r.get('source', 'N/A')}, content={r.get('content', '')[:50]}...")
             return results
         except Exception as e:
             logger.error(f"[DelegationRouter] RAG search error: {e}")
@@ -291,7 +293,7 @@ class DelegationRouter:
                             yield self._sse_data(chunk)
 
             logger.info(f"[DelegationRouter] Runner completed, response length: {len(full_response)}")
-            yield self._sse_done("".join(full_response))
+            yield self._sse_done("".join(full_response), rag_context)
         except Exception as e:
             logger.error(f"[DelegationRouter] Runner error: {e}", exc_info=True)
             yield self._sse_error(f"Runner error: {e}")
@@ -411,7 +413,7 @@ class DelegationRouter:
                                 yield self._sse_data(tool_info)
                 
                 logger.info(f"[DelegationRouter] Runner completed, length: {len(full_response)}")
-                yield self._sse_done("".join(full_response))
+                yield self._sse_done("".join(full_response), rag_context)
                 
             except Exception as e:
                 logger.error(f"[DelegationRouter] Runner error: {e}", exc_info=True)
@@ -456,9 +458,30 @@ class DelegationRouter:
         """SSE 에러 이벤트 포맷"""
         return f"data: {json.dumps({'error': error}, ensure_ascii=False)}\n\n"
 
-    def _sse_done(self, full_response: str) -> str:
-        """SSE 완료 이벤트 포맷"""
-        return f"data: {json.dumps({'done': True, 'response': full_response}, ensure_ascii=False)}\n\n"
+    def _sse_done(self, full_response: str, rag_results: List[Dict] = None) -> str:
+        """SSE 완료 이벤트 포맷 - 출처 자동 추가"""
+        if rag_results:
+            sources = []
+            for r in rag_results[:5]:
+                source = r.get('source', r.get('db_id', '알 수 없음'))
+                if source and source not in sources:
+                    sources.append(source)
+            
+            if sources:
+                source_footer = "
+
+---
+📚 **출처 목록**
+" + "
+".join([f"{i}. {s}" for i, s in enumerate(sources, 1)])
+                full_response = full_response + source_footer
+        
+        return f"data: {json.dumps({'done': True, 'response': full_response}, ensure_ascii=False)}
+
+"
+
+
+
 
 
 # 전역 라우터 인스턴스
