@@ -271,17 +271,15 @@ class SubAgentFactory:
 
         # Build a synchronous wrapper that calls the child agent
         def _run_child(request: str) -> str:
-            """Execute child agent synchronously and return its output."""
+            """Execute child agent and return its output."""
             logger.warning(f"[DELEGATE_START] {chatbot_id} request={request[:200]}")
 
             import asyncio
             try:
                 # Try to get existing event loop
                 loop = asyncio.get_running_loop()
-                # Already in async context - create task and await
-                # This should not happen in sync function tool context, but handle gracefully
+                # Already in async context - use thread executor
                 logger.warning(f"[DELEGATE_WARN] {chatbot_id} called inside running loop, using run_in_executor")
-                # Use a new thread with its own event loop
                 import concurrent.futures
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(self._run_child_async, chatbot_id, request)
@@ -292,12 +290,13 @@ class SubAgentFactory:
                 result = asyncio.run(self._run_child_async(chatbot_id, request))
                 return result
 
-        tool = FunctionTool(
-            func=_run_child,
-            name=chatbot_id.replace("-", "_"),
-            description=chatbot_def.get("description", f"Delegate to {chatbot_id}"),
-        )
-        logger.info(f"[SubAgentFactory] Created FunctionTool for {chatbot_id}")
+        # Set function metadata for ADK to pick up
+        safe_name = chatbot_id.replace("-", "_")
+        _run_child.__name__ = safe_name
+        _run_child.__doc__ = chatbot_def.get("description", f"Delegate to {chatbot_id}")
+
+        tool = FunctionTool(func=_run_child)
+        logger.info(f"[SubAgentFactory] Created FunctionTool for {chatbot_id} (name={safe_name})")
         return tool
 
     async def _run_child_async(self, chatbot_id: str, request: str) -> str:
