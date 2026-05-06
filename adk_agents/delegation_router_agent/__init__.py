@@ -413,7 +413,7 @@ class DelegationRouter:
                                 yield self._sse_data(tool_info)
                 
                 logger.info(f"[DelegationRouter] Runner completed, length: {len(full_response)}")
-                yield self._sse_done("".join(full_response), rag_context)
+                yield self._sse_done("".join(full_response), rag_results)
                 
             except Exception as e:
                 logger.error(f"[DelegationRouter] Runner error: {e}", exc_info=True)
