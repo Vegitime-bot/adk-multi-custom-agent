@@ -36,6 +36,10 @@ def _patch_litellm():
         logger.warning("[LiteLLM Patch] litellm not installed, skipping patch")
         return
 
+    # LiteLLM 상세 디버깅 활성화 (HTTP 요청/응답 전문 출력)
+    litellm._turn_on_debug()
+    logger.info("[LiteLLM Patch] Debug logging enabled")
+
     _original_acompletion = litellm.acompletion
 
     async def _wrapped_acompletion(*args, **kwargs):
