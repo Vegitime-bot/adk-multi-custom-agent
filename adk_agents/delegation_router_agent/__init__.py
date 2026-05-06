@@ -416,8 +416,24 @@ class DelegationRouter:
                 yield self._sse_done("".join(full_response), rag_results)
                 
             except Exception as e:
-                logger.error(f"[DelegationRouter] Runner error: {e}", exc_info=True)
-                yield self._sse_error(f"Runner error: {e}")
+                error_msg = str(e).lower()
+                # Check if it's a function calling / tool calling not supported error (422)
+                if "422" in error_msg or "badrequest" in error_msg or "function call" in error_msg or "tools" in error_msg:
+                    logger.warning(f"[DelegationRouter] Tool calling not supported (422), falling back to text-based route_and_stream: {e}")
+                    yield self._sse_data("[Tool calling 지원되지 않는 모델. 텍스트 기반 위임으로 폴백합니다.]")
+                    async for chunk in self.route_and_stream(
+                        chatbot_id=chatbot_id,
+                        message=message,
+                        session_id=session_id,
+                        user_id=user_id,
+                        db_ids=db_ids,
+                        history=history
+                    ):
+                        yield chunk
+                    return
+                else:
+                    logger.error(f"[DelegationRouter] Runner error: {e}", exc_info=True)
+                    yield self._sse_error(f"Runner error: {e}")
                 
         except Exception as e:
             logger.error(f"[DelegationRouter] Route error: {e}", exc_info=True)
