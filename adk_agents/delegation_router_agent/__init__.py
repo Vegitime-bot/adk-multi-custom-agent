@@ -412,6 +412,15 @@ class DelegationRouter:
                                 logger.info(f"[DelegationRouter] Tool call detected: {part.function_call.name}")
                                 tool_info = f"[도구 호출: {part.function_call.name}]"
                                 yield self._sse_data(tool_info)
+                            elif hasattr(part, 'function_response') and part.function_response:
+                                logger.info(f"[DelegationRouter] Tool response: {part.function_response}")
+                            else:
+                                logger.info(f"[DelegationRouter] Unknown part type: {type(part).__name__}")
+                    
+                    # event.actions에서 invocation 결과 확인
+                    if event.actions and event.actions.invocation_results:
+                        for result in event.actions.invocation_results:
+                            logger.info(f"[DelegationRouter] Invocation result: {result}")
                 
                 logger.info(f"[DelegationRouter] Runner completed, length: {len(full_response)}")
                 yield self._sse_done("".join(full_response), rag_results)
