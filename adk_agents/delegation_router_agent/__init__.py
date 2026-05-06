@@ -357,34 +357,31 @@ class DelegationRouter:
                 session_service=self.session_service
             )
             
-            # 4. 프롬프트 구성 (RAG 컨텍스트 포함 - 개선된 형식)
-            if rag_results:
-                context_parts = [
-                    "[검색된 관련 문서 - 반드시 참고하여 답변하세요]",
-                    "",
-                ]
-                for i, r in enumerate(rag_results[:5], 1):
+            # 4. 프롬프트 구성 (RAG 컨텍스트 선택적 주입)
+            if rag_results and not self._is_weekly_report_query(message):
+                # 일반 질문: RAG 결과 압축 제공
+                context_parts = ["[관련 문서 참고]"]
+                for i, r in enumerate(rag_results[:2], 1):  # 최대 2개만
                     content = r.get('content', '')
                     source = r.get('source', 'unknown')
                     score = r.get('score', 0)
-                    context_parts.append(f"[문서 {i}] (출처: {source}, 점수: {score:.2f})")
-                    context_parts.append(content[:500] if len(content) > 500 else content)
-                    context_parts.append("")
+                    # 100자로 압축
+                    short_content = content[:100] + "..." if len(content) > 100 else content
+                    context_parts.append(f"{i}. [{source}](score:{score:.2f}) {short_content}")
                 
                 context_parts.extend([
-                    "[지침]",
-                    "- 위 문서 내용을 바탕으로 답변하세요.",
-                    "- 문서에 없는 내용은 '확인 필요'라고 표시하세요.",
-                    "- 출처를 명시하세요: [출처: 문서명]",
                     "",
                     "[사용자 질문]",
                     message
                 ])
                 message_with_context = "\n".join(context_parts)
-                logger.info(f"[DelegationRouter] RAG context added: {len(rag_results)} results, prompt length: {len(message_with_context)}")
+                logger.info(f"[DelegationRouter] RAG context: {len(rag_results)} results, prompt length: {len(message_with_context)}")
             else:
+                # 주간보고 질문 또는 RAG 결과 없음: tool calling 유도
+                if rag_results and self._is_weekly_report_query(message):
+                    logger.info("[DelegationRouter] Weekly report query - skipping RAG injection to enable tool calling")
                 message_with_context = message
-                logger.warning("[DelegationRouter] No RAG results, using raw message")
+                logger.warning("[DelegationRouter] No RAG context injection, using raw message")
             
             content = types.Content(role='user', parts=[types.Part(text=message_with_context)])
             
