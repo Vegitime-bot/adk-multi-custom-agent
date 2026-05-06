@@ -1,5 +1,5 @@
 {
-  "id": "rp_pddi_minutes",
+  "id": "pddi_minutes",
   "name": "PDDI 회의록",
   "description": "PDDI 회의록 관련 문의 처리",
   "parent_id": "pddi_total",
