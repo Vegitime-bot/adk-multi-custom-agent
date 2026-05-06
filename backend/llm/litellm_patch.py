@@ -16,19 +16,12 @@ logger = logging.getLogger(__name__)
 def _normalize_openai_messages(messages):
     """
     사내 API 호환성: assistant + tool_calls 메시지에 content=None/누락 시 빈 문자열 보정.
-    tool 메시지도 content가 None이면 빈 문자열로 변환.
     """
     fixed = []
     for m in messages:
         m = dict(m)
         if m.get("role") == "assistant":
             if ("tool_calls" in m or "function_call" in m) and "content" not in m:
-                m["content"] = ""
-            if m.get("content") is None:
-                m["content"] = ""
-        elif m.get("role") == "tool":
-            # tool 메시지도 content 필드가 없거나 None이면 빈 문자열로
-            if "content" not in m:
                 m["content"] = ""
             if m.get("content") is None:
                 m["content"] = ""
