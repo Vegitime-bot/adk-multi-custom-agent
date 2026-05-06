@@ -1,1 +1,24 @@
-{"id": "rp_pddi_minutes", "name": "PDDI 회의록", "description": "PDDI 회의록 관련 문의 처리", "capabilities": {"system_prompt": "당신은 PDDI 회의록 관리 챗봇입니다."}, "sub_chatbots": []}
+{
+  "id": "rp_pddi_minutes",
+  "name": "PDDI 회의록",
+  "description": "PDDI 회의록 관련 문의 처리",
+  "active": true,
+  "capabilities": {
+    "db_ids": [
+      "db_pddi_minutes"
+    ],
+    "model": "kimi-k2.5:cloud",
+    "system_prompt": "당신은 PDDI 회의록 관리 챗봇입니다."
+  },
+  "policy": {
+    "temperature": 0.3,
+    "max_tokens": 1024,
+    "stream": true,
+    "supported_modes": [
+      "tool",
+      "agent"
+    ],
+    "default_mode": "agent",
+    "max_messages": 20
+  }
+}

@@ -417,8 +417,9 @@ async function loadHierarchy() {
     `;
     
     try {
-        const response = await fetch('/main/api/chatbots');
-        const bots = await response.json();
+        const response = await fetch('/api/debug/agents');
+        const data = await response.json();
+        const bots = data.agents || [];
         
         // API 응답 체크
         if (!Array.isArray(bots)) {

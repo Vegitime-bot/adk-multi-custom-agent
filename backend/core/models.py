@@ -150,14 +150,14 @@ class ChatbotDef:
                 role=ExecutionRole(data.get("role", "agent")),
                 active=data.get("active", True),
                 retrieval=RetrievalConfig(
-                    db_ids=data["retrieval"]["db_ids"],
-                    k=data["retrieval"].get("k", 5),
-                    filter_metadata=data["retrieval"].get("filter_metadata", {}),
+                    db_ids=data.get("retrieval", {}).get("db_ids", []),
+                    k=data.get("retrieval", {}).get("k", 5),
+                    filter_metadata=data.get("retrieval", {}).get("filter_metadata", {}),
                 ),
                 llm=LLMConfig.from_dict(data.get("llm", {})),
                 memory=MemoryConfig(
-                    enabled=data["memory"].get("enabled", True),
-                    max_messages=data["memory"].get("max_messages", 20),
+                    enabled=data.get("memory", {}).get("enabled", True),
+                    max_messages=data.get("memory", {}).get("max_messages", 20),
                 ),
                 system_prompt=data.get("system_prompt", ""),
                 sub_chatbots=[

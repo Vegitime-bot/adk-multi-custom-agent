@@ -35,3 +35,4 @@ logs/
 # DB / index files
 *.db
 faiss_index/
+.venv312/
