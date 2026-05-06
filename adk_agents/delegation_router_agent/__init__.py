@@ -427,14 +427,10 @@ class DelegationRouter:
                 
             except Exception as e:
                 error_msg = str(e).lower()
-                # 422 (tool calling unsupported) OR RateLimitError → fallback to text-based route_and_stream
-                is_422 = "422" in error_msg or "badrequest" in error_msg or "function call" in error_msg or "tools" in error_msg
-                is_rate_limit = "ratelimit" in error_msg or "rate limit" in error_msg or "429" in error_msg
-                
-                if is_422 or is_rate_limit:
-                    reason = "Tool calling unsupported (422)" if is_422 else "Rate limit exceeded"
-                    logger.warning(f"[DelegationRouter] {reason}, falling back to text-based route_and_stream: {e}")
-                    yield self._sse_data(f"[{reason}. 텍스트 기반 위임으로 폴백합니다.]")
+                # Check if it's a function calling / tool calling not supported error (422)
+                if "422" in error_msg or "badrequest" in error_msg or "function call" in error_msg or "tools" in error_msg:
+                    logger.warning(f"[DelegationRouter] Tool calling not supported (422), falling back to text-based route_and_stream: {e}")
+                    yield self._sse_data("[Tool calling 지원되지 않는 모델. 텍스트 기반 위임으로 폴백합니다.]")
                     # 새로운 세션 ID 사용 (이전 세션이 tool context를 포함할 수 있음)
                     fallback_session_id = f"{session_id}_fb_{int(time.time())}"
                     async for chunk in self.route_and_stream(
