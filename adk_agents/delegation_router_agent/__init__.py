@@ -468,17 +468,10 @@ class DelegationRouter:
                     sources.append(source)
             
             if sources:
-                source_footer = "
-
----
-📚 **출처 목록**
-" + "
-".join([f"{i}. {s}" for i, s in enumerate(sources, 1)])
+                source_footer = "\n\n---\n📚 **출처 목록**\n" + "\n".join([f"{i}. {s}" for i, s in enumerate(sources, 1)])
                 full_response = full_response + source_footer
         
-        return f"data: {json.dumps({'done': True, 'response': full_response}, ensure_ascii=False)}
-
-"
+        return f"data: {json.dumps({'done': True, 'response': full_response}, ensure_ascii=False)}\n\n"
 
 
 
