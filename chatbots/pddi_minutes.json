@@ -1,7 +1,7 @@
 {
   "id": "pddi_minutes",
   "name": "PDDI 회의록",
-  "description": "PDDI 회의록 관련 문의 처리",
+  "description": "PDDI 주간보고 및 회의록 검색 전문 에이전트. 주간보고, 주간 업무보고, weekly report, 회의록, 진행상황 보고, 지난주 업무, 금주 업무 내용을 검색하고 요약합니다. 사용자 질문에 주간보고/회의록 관련 내용이 포함되면 반드시 이 도구를 사용하세요.",
   "parent_id": "pddi_total",
   "active": true,
   "capabilities": {

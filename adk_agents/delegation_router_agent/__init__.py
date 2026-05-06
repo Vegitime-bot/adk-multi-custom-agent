@@ -441,6 +441,14 @@ class DelegationRouter:
                 
                 logger.info(f"[DelegationRouter] Runner completed, text_chunks={text_chunks_count}, tool_call={tool_call_detected}, func_response={function_response_detected}")
                 
+                # FAIL-CLOSED: 주간보고/회의록 질문인데 tool_call 없으면
+                if self._is_weekly_report_query(message) and not tool_call_detected:
+                    fail_message = "[주간보고/회의록 관련 질문은 pddi_minutes 도구 호출이 필요한데, 도구가 호출되지 않았습니다. 라우팅 설정을 확인해주세요.]"
+                    logger.warning(f"[DelegationRouter] FAIL-CLOSED: weekly report query without tool call")
+                    yield self._sse_data(fail_message)
+                    yield self._sse_done(fail_message, rag_results)
+                    return
+                
                 # FAIL-CLOSED: 근거 없으면 답변 금지
                 if tool_call_detected and not function_response_detected:
                     fail_message = "[위임 결과를 받지 못해 답변할 수 없습니다.]"
@@ -532,6 +540,15 @@ class DelegationRouter:
                 full_response = full_response + source_footer
         
         return f"data: {json.dumps({'done': True, 'response': full_response}, ensure_ascii=False)}\n\n"
+
+    def _is_weekly_report_query(self, message: str) -> bool:
+        """주간보고/회의록 관련 질문 여부 확인"""
+        keywords = [
+            "주간보고", "주간 보고", "weekly report", "회의록", "보고 내용",
+            "지난주 업무", "금주 업무", "진행상황", "보고", "회의"
+        ]
+        msg_lower = message.lower()
+        return any(k in msg_lower for k in keywords)
 
 
 
