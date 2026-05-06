@@ -392,6 +392,12 @@ class DelegationRouter:
             logger.info(f"[DelegationRouter] Starting runner with tools for session {session_id}")
             full_response = []
             
+            # 디버그/감사 추적용 플래그
+            tool_call_detected = False
+            function_response_detected = False
+            function_response_content = None
+            text_chunks_count = 0
+            
             try:
                 async for event in runner.run_async(
                     user_id=user_id,
@@ -406,13 +412,17 @@ class DelegationRouter:
                             if hasattr(part, 'text') and part.text:
                                 chunk = part.text
                                 full_response.append(chunk)
+                                text_chunks_count += 1
                                 logger.debug(f"[DelegationRouter] Yielding chunk: {chunk[:50]}...")
                                 yield self._sse_data(chunk)
                             elif hasattr(part, 'function_call') and part.function_call:
+                                tool_call_detected = True
                                 logger.info(f"[DelegationRouter] Tool call detected: {part.function_call.name}")
                                 tool_info = f"[도구 호출: {part.function_call.name}]"
                                 yield self._sse_data(tool_info)
                             elif hasattr(part, 'function_response') and part.function_response:
+                                function_response_detected = True
+                                function_response_content = part.function_response
                                 logger.info(f"[DelegationRouter] Tool response: {part.function_response}")
                             else:
                                 logger.info(f"[DelegationRouter] Unknown part type: {type(part).__name__}")
@@ -429,7 +439,22 @@ class DelegationRouter:
                             attrs = [a for a in dir(event.actions) if not a.startswith('_')]
                             logger.info(f"[DelegationRouter] Actions attrs: {attrs}")
                 
-                logger.info(f"[DelegationRouter] Runner completed, length: {len(full_response)}")
+                logger.info(f"[DelegationRouter] Runner completed, text_chunks={text_chunks_count}, tool_call={tool_call_detected}, func_response={function_response_detected}")
+                
+                # FAIL-CLOSED: 근거 없으면 답변 금지
+                if tool_call_detected and not function_response_detected:
+                    fail_message = "[위임 결과를 받지 못해 답변할 수 없습니다.]"
+                    logger.warning(f"[DelegationRouter] FAIL-CLOSED: tool called but no response received")
+                    yield self._sse_data(fail_message)
+                    yield self._sse_done(fail_message, rag_results)
+                    return
+                elif text_chunks_count == 0:
+                    fail_message = "[답변을 생성할 수 없습니다.]"
+                    logger.warning(f"[DelegationRouter] FAIL-CLOSED: no text chunks generated")
+                    yield self._sse_data(fail_message)
+                    yield self._sse_done(fail_message, rag_results)
+                    return
+                
                 yield self._sse_done("".join(full_response), rag_results)
                 
             except Exception as e:
