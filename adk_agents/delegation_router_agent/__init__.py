@@ -417,10 +417,17 @@ class DelegationRouter:
                             else:
                                 logger.info(f"[DelegationRouter] Unknown part type: {type(part).__name__}")
                     
-                    # event.actions에서 invocation 결과 확인
-                    if event.actions and event.actions.invocation_results:
-                        for result in event.actions.invocation_results:
-                            logger.info(f"[DelegationRouter] Invocation result: {result}")
+                    # event.actions에서 invocation 결과 확인 (안전하게)
+                    if hasattr(event, 'actions') and event.actions:
+                        logger.info(f"[DelegationRouter] Event actions: {type(event.actions).__name__}")
+                        if hasattr(event.actions, 'invocation_results'):
+                            for result in event.actions.invocation_results:
+                                logger.info(f"[DelegationRouter] Invocation result: {result}")
+                        elif hasattr(event.actions, 'model_actions'):
+                            logger.info(f"[DelegationRouter] Model actions: {event.actions.model_actions}")
+                        else:
+                            attrs = [a for a in dir(event.actions) if not a.startswith('_')]
+                            logger.info(f"[DelegationRouter] Actions attrs: {attrs}")
                 
                 logger.info(f"[DelegationRouter] Runner completed, length: {len(full_response)}")
                 yield self._sse_done("".join(full_response), rag_results)
