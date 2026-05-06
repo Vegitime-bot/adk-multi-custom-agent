@@ -1,12 +1,14 @@
 """
 LiteLLM patch for internal API compatibility.
 
-Fixes: assistant messages with tool_calls but no content field
-cause 422 BadRequestError on some OpenAI-compatible APIs.
+Fixes:
+1. assistant messages with tool_calls but no content field cause 422
+2. Rate limit errors cause immediate failure (adds exponential backoff retry)
 
 Applied automatically on import.
 """
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -14,18 +16,13 @@ logger = logging.getLogger(__name__)
 def _normalize_openai_messages(messages):
     """
     사내 API 호환성: assistant + tool_calls 메시지에 content=None/누락 시 빈 문자열 보정.
-
-    OpenAI 공식 스펙상 content는 optional 이지만, 일부 사내 API 구현에서는
-    assistant 메시지의 content 필드를 required 로 선언해 422를 반환함.
     """
     fixed = []
     for m in messages:
         m = dict(m)
         if m.get("role") == "assistant":
-            # tool_calls 또는 function_call 이 있는데 content 필드 자체가 없으면 추가
             if ("tool_calls" in m or "function_call" in m) and "content" not in m:
                 m["content"] = ""
-            # content가 None이면 빈 문자열로 변환
             if m.get("content") is None:
                 m["content"] = ""
         fixed.append(m)
@@ -44,7 +41,22 @@ def _patch_litellm():
     async def _wrapped_acompletion(*args, **kwargs):
         if "messages" in kwargs:
             kwargs["messages"] = _normalize_openai_messages(kwargs["messages"])
-        return await _original_acompletion(*args, **kwargs)
+
+        max_retries = kwargs.pop("_patch_max_retries", 3)
+        base_delay = kwargs.pop("_patch_base_delay", 1.0)
+
+        for attempt in range(max_retries + 1):
+            try:
+                return await _original_acompletion(*args, **kwargs)
+            except litellm.RateLimitError as e:
+                if attempt == max_retries:
+                    logger.error(f"[LiteLLM Patch] RateLimitError after {max_retries} retries: {e}")
+                    raise
+                delay = base_delay * (2 ** attempt)
+                logger.warning(f"[LiteLLM Patch] RateLimitError, retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
+                await asyncio.sleep(delay)
+            except Exception:
+                raise
 
     litellm.acompletion = _wrapped_acompletion
 
@@ -58,7 +70,7 @@ def _patch_litellm():
     litellm.completion = _wrapped_completion
 
     logger.info(
-        "[LiteLLM Patch] Applied normalize_openai_messages patch for internal API compatibility"
+        "[LiteLLM Patch] Applied normalize_openai_messages + RateLimit retry patch for internal API compatibility"
     )
 
 
