@@ -354,14 +354,6 @@ class SubAgentFactory:
             
             root_agent = Agent(**agent_kwargs)
             logger.info(f"[SubAgentFactory] Created root agent {agent_name} with {len(tools)} tools")
-            # DEBUG: log tool schemas
-            for tool in tools:
-                logger.info(f"[SubAgentFactory] DEBUG Tool: name={getattr(tool, 'name', 'N/A')}, type={type(tool).__name__}")
-                if hasattr(tool, 'function_declaration'):
-                    fd = tool.function_declaration
-                    logger.info(f"[SubAgentFactory] DEBUG Tool schema: {fd}")
-                elif hasattr(tool, '_agent'):
-                    logger.info(f"[SubAgentFactory] DEBUG Tool agent: {tool._agent.name}")
             return root_agent
         except Exception as e:
             logger.error(f"[SubAgentFactory] Failed to create root agent: {e}")
