@@ -357,11 +357,14 @@ class DelegationRouter:
                 session_service=self.session_service
             )
             
-            # 4. 프롬프트 구성 (RAG 컨텍스트 포함 - tool calling 유지)
+            # 4. 챗봇 정의 로드 (RAG 스킵 판단용)
+            chatbot_def = self._load_chatbot_def(chatbot_id)
+            has_sub_chatbots = bool(chatbot_def and getattr(chatbot_def, 'sub_chatbots', None))
+            
+            # 5. 프롬프트 구성 (RAG 컨텍스트 포함 - tool calling 유지)
             if rag_results:
                 # 하위 에이전트가 없는 경우(단독 실행)나 일반 질문: RAG 제공
                 # 위임 가능한 parent일 때만 주간보고 질문에 RAG 생략
-                has_sub_chatbots = bool(getattr(chatbot_def, 'sub_chatbots', None))
                 if has_sub_chatbots and self._is_weekly_report_query(message):
                     # Parent agent + 주간보고: RAG 생략, tool calling 유도
                     message_with_context = message
