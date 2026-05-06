@@ -424,15 +424,28 @@ class DelegationRouter:
                                 function_response_detected = True
                                 function_response_content = part.function_response
                                 logger.info(f"[DelegationRouter] Tool response: {part.function_response}")
+                                # function_response 내용도 응답에 추가
+                                if hasattr(part.function_response, 'output') and part.function_response.output:
+                                    output_str = str(part.function_response.output)
+                                    full_response.append(output_str)
+                                    yield self._sse_data(output_str)
+                                elif hasattr(part.function_response, 'result') and part.function_response.result:
+                                    result_str = str(part.function_response.result)
+                                    full_response.append(result_str)
+                                    yield self._sse_data(result_str)
                             else:
                                 logger.info(f"[DelegationRouter] Unknown part type: {type(part).__name__}")
                     
                     # event.actions에서 invocation 결과 확인 (안전하게)
                     if hasattr(event, 'actions') and event.actions:
                         logger.info(f"[DelegationRouter] Event actions: {type(event.actions).__name__}")
-                        if hasattr(event.actions, 'invocation_results'):
+                        if hasattr(event.actions, 'invocation_results') and event.actions.invocation_results:
+                            function_response_detected = True
                             for result in event.actions.invocation_results:
                                 logger.info(f"[DelegationRouter] Invocation result: {result}")
+                                result_str = str(result)
+                                full_response.append(result_str)
+                                yield self._sse_data(result_str)
                         elif hasattr(event.actions, 'model_actions'):
                             logger.info(f"[DelegationRouter] Model actions: {event.actions.model_actions}")
                         else:
