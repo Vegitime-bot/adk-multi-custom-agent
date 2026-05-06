@@ -357,31 +357,31 @@ class DelegationRouter:
                 session_service=self.session_service
             )
             
-            # 4. 프롬프트 구성 (RAG 컨텍스트 선택적 주입)
-            if rag_results and not self._is_weekly_report_query(message):
-                # 일반 질문: RAG 결과 압축 제공
-                context_parts = ["[관련 문서 참고]"]
-                for i, r in enumerate(rag_results[:2], 1):  # 최대 2개만
-                    content = r.get('content', '')
-                    source = r.get('source', 'unknown')
-                    score = r.get('score', 0)
-                    # 100자로 압축
-                    short_content = content[:100] + "..." if len(content) > 100 else content
-                    context_parts.append(f"{i}. [{source}](score:{score:.2f}) {short_content}")
-                
-                context_parts.extend([
-                    "",
-                    "[사용자 질문]",
-                    message
-                ])
-                message_with_context = "\n".join(context_parts)
-                logger.info(f"[DelegationRouter] RAG context: {len(rag_results)} results, prompt length: {len(message_with_context)}")
+            # 4. 프롬프트 구성 (RAG 컨텍스트 포함 - tool calling 유지)
+            if rag_results:
+                # 하위 에이전트가 없는 경우(단독 실행)나 일반 질문: RAG 제공
+                # 위임 가능한 parent일 때만 주간보고 질문에 RAG 생략
+                has_sub_chatbots = bool(getattr(chatbot_def, 'sub_chatbots', None))
+                if has_sub_chatbots and self._is_weekly_report_query(message):
+                    # Parent agent + 주간보고: RAG 생략, tool calling 유도
+                    message_with_context = message
+                    logger.info(f"[DelegationRouter] Parent + weekly report query: skipping RAG to enable tool calling")
+                else:
+                    # Child agent 단독 or 일반 질문: RAG 결과 제공
+                    context_parts = ["[관련 문서 참고]"]
+                    for i, r in enumerate(rag_results[:2], 1):
+                        content = r.get('content', '')
+                        source = r.get('source', 'unknown')
+                        score = r.get('score', 0)
+                        short_content = content[:100] + "..." if len(content) > 100 else content
+                        context_parts.append(f"{i}. [{source}](score:{score:.2f}) {short_content}")
+                    
+                    context_parts.extend(["", "[사용자 질문]", message])
+                    message_with_context = "\n".join(context_parts)
+                    logger.info(f"[DelegationRouter] RAG context: {len(rag_results)} results, prompt length: {len(message_with_context)}")
             else:
-                # 주간보고 질문 또는 RAG 결과 없음: tool calling 유도
-                if rag_results and self._is_weekly_report_query(message):
-                    logger.info("[DelegationRouter] Weekly report query - skipping RAG injection to enable tool calling")
                 message_with_context = message
-                logger.warning("[DelegationRouter] No RAG context injection, using raw message")
+                logger.warning("[DelegationRouter] No RAG results, using raw message")
             
             content = types.Content(role='user', parts=[types.Part(text=message_with_context)])
             
