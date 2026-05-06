@@ -301,6 +301,11 @@ class SubAgentFactory:
         chatbot_def = self._get_chatbot_def(chatbot_id)
         if not chatbot_def:
             logger.error(f"[SubAgentFactory] Chatbot definition not found: {chatbot_id}")
+            # 추가 디버그: 사용 가능한 챗봇 목록 출력
+            available = list(self._chatbot_defs.keys())
+            if self._chatbot_manager:
+                available = [c.id for c in self._chatbot_manager.list_all()]
+            logger.error(f"[SubAgentFactory] Available chatbots: {available}")
             return None
         
         capabilities = chatbot_def.get("capabilities", {})
