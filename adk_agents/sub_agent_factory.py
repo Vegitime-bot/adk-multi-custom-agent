@@ -414,15 +414,15 @@ class SubAgentFactory:
         policy = chatbot_def.get("policy", {})
         sub_chatbots = chatbot_def.get("sub_chatbots", [])
         
-        # 하위 챗봘을 Tool로 변환 (FunctionTool 사용)
+        # 하위 챗봘을 Tool로 변환
         tools = []
         for sub in sub_chatbots:
             sub_id = sub.get("id")
             if sub_id:
-                sub_tool = self.create_function_tool(sub_id)
+                sub_tool = self.create_agent_tool(sub_id)
                 if sub_tool:
                     tools.append(sub_tool)
-                    logger.info(f"[SubAgentFactory] Added {sub_id} as FunctionTool to {chatbot_id}")
+                    logger.info(f"[SubAgentFactory] Added {sub_id} as tool to {chatbot_id}")
         
         # 시스템 프롬프트 구성 (하위 챗봘 정보 포함)
         system_prompt = capabilities.get("system_prompt", "")
