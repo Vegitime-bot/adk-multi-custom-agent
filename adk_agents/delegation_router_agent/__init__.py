@@ -390,6 +390,12 @@ class DelegationRouter:
             
             # 5. Runner 실행 및 스트리밍
             logger.info(f"[DelegationRouter] Starting runner with tools for session {session_id}")
+            logger.info(f"[DelegationRouter] DEBUG RootAgent: name={root_agent.name}, model={root_agent.model}")
+            if hasattr(root_agent, 'tools') and root_agent.tools:
+                tool_names = [t.name for t in root_agent.tools]
+                logger.info(f"[DelegationRouter] DEBUG Tools registered: count={len(root_agent.tools)}, names={tool_names}")
+            else:
+                logger.info("[DelegationRouter] DEBUG No tools registered on root agent")
             full_response = []
             
             try:
@@ -418,6 +424,15 @@ class DelegationRouter:
                 
             except Exception as e:
                 error_msg = str(e).lower()
+                # DEBUG: log full exception details
+                logger.error(f"[DelegationRouter] FULL EXCEPTION: type={type(e).__name__}, repr={repr(e)}")
+                if hasattr(e, 'response'):
+                    logger.error(f"[DelegationRouter] EXCEPTION response: {e.response}")
+                if hasattr(e, 'body'):
+                    logger.error(f"[DelegationRouter] EXCEPTION body: {e.body}")
+                if hasattr(e, 'status_code'):
+                    logger.error(f"[DelegationRouter] EXCEPTION status_code: {e.status_code}")
+                
                 # Check if it's a function calling / tool calling not supported error (422)
                 if "422" in error_msg or "badrequest" in error_msg or "function call" in error_msg or "tools" in error_msg:
                     logger.warning(f"[DelegationRouter] Tool calling not supported (422), falling back to text-based route_and_stream: {e}")
