@@ -3,6 +3,7 @@ SubAgentFactory - JSON 정의를 ADK Agent로 변환하는 팩토리
 """
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -17,6 +18,7 @@ try:
     from google.adk.agents import Agent
     from google.adk.models.lite_llm import LiteLlm
     from google.adk.tools.agent_tool import AgentTool
+    from google.adk.tools.function_tool import FunctionTool
     ADK_AVAILABLE = True
 except ImportError as e:
     ADK_AVAILABLE = False
@@ -24,6 +26,7 @@ except ImportError as e:
     Agent = None
     LiteLlm = None
     AgentTool = None
+    FunctionTool = None
 
 from adk_agents.tools.delegation_tools import calculate_confidence, select_sub_chatbot, should_delegate
 
@@ -243,6 +246,106 @@ class SubAgentFactory:
         
         return result
     
+    def create_function_tool(self, chatbot_id: str, router_instance=None):
+        """
+        JSON → Agent → FunctionTool 변환 (직접 실행 경로)
+
+        AgentTool 대신 FunctionTool을 사용하여 child agent를 명시적으로 실행하고
+        결과를 문자열로 반환. Tool calling 메시지 경로 문제를 우회.
+
+        Args:
+            chatbot_id: 챗봇 ID
+            router_instance: DelegationRouter 인스턴스 (run_async_with_debug 사용용)
+
+        Returns:
+            FunctionTool 인스턴스 또는 None
+        """
+        if not ADK_AVAILABLE or FunctionTool is None:
+            logger.error("[SubAgentFactory] FunctionTool not available")
+            return None
+
+        chatbot_def = self._get_chatbot_def(chatbot_id)
+        if not chatbot_def:
+            logger.warning(f"[SubAgentFactory] Chatbot definition not found: {chatbot_id}")
+            return None
+
+        # Build a synchronous wrapper that calls the child agent
+        def _run_child(request: str) -> str:
+            """Execute child agent synchronously and return its output."""
+            logger.warning(f"[DELEGATE_START] {chatbot_id} request={request[:200]}")
+
+            import asyncio
+            try:
+                # Try to get existing event loop
+                loop = asyncio.get_running_loop()
+                # Already in async context - create task and await
+                # This should not happen in sync function tool context, but handle gracefully
+                logger.warning(f"[DELEGATE_WARN] {chatbot_id} called inside running loop, using run_in_executor")
+                # Use a new thread with its own event loop
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(self._run_child_async, chatbot_id, request)
+                    result = future.result(timeout=120)
+                    return result
+            except RuntimeError:
+                # No running loop - safe to use asyncio.run
+                result = asyncio.run(self._run_child_async(chatbot_id, request))
+                return result
+
+        tool = FunctionTool(
+            func=_run_child,
+            name=chatbot_id.replace("-", "_"),
+            description=chatbot_def.get("description", f"Delegate to {chatbot_id}"),
+        )
+        logger.info(f"[SubAgentFactory] Created FunctionTool for {chatbot_id}")
+        return tool
+
+    async def _run_child_async(self, chatbot_id: str, request: str) -> str:
+        """Async helper to run child agent and return output."""
+        from google.adk.runners import Runner
+        from google.adk.sessions.in_memory_session_service import InMemorySessionService
+        from google.genai import types
+
+        chatbot_def = self._get_chatbot_def(chatbot_id)
+        if not chatbot_def:
+            return f"[ERROR] Chatbot not found: {chatbot_id}"
+
+        # Create child agent
+        child_agent = self.create_agent(chatbot_def)
+        if not child_agent:
+            return f"[ERROR] Failed to create agent: {chatbot_id}"
+
+        # Setup runner with fresh session
+        session_service = InMemorySessionService()
+        runner = Runner(
+            app_name=f"child_{chatbot_id}",
+            agent=child_agent,
+            session_service=session_service,
+        )
+        session_id = f"child_{chatbot_id}_{int(time.time())}"
+        user_id = "delegate_user"
+
+        content = types.Content(role='user', parts=[types.Part(text=request)])
+
+        full_response = []
+        try:
+            async for event in runner.run_async(
+                user_id=user_id,
+                session_id=session_id,
+                new_message=content
+            ):
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if hasattr(part, 'text') and part.text:
+                            full_response.append(part.text)
+
+            result = "".join(full_response)
+            logger.warning(f"[DELEGATE_END] {chatbot_id} result_preview={result[:500]}")
+            return result if result else "[ERROR] Child agent returned empty response"
+        except Exception as e:
+            logger.error(f"[DELEGATE_ERROR] {chatbot_id}: {e}", exc_info=True)
+            return f"[ERROR] {chatbot_id} execution failed: {e}"
+
     def clear_cache(self):
         """에이전트 캐시 초기화"""
         self._agent_cache.clear()
@@ -312,15 +415,15 @@ class SubAgentFactory:
         policy = chatbot_def.get("policy", {})
         sub_chatbots = chatbot_def.get("sub_chatbots", [])
         
-        # 하위 챗봘을 Tool로 변환
+        # 하위 챗봘을 Tool로 변환 (FunctionTool 사용)
         tools = []
         for sub in sub_chatbots:
             sub_id = sub.get("id")
             if sub_id:
-                sub_tool = self.create_agent_tool(sub_id)
+                sub_tool = self.create_function_tool(sub_id)
                 if sub_tool:
                     tools.append(sub_tool)
-                    logger.info(f"[SubAgentFactory] Added {sub_id} as tool to {chatbot_id}")
+                    logger.info(f"[SubAgentFactory] Added {sub_id} as FunctionTool to {chatbot_id}")
         
         # 시스템 프롬프트 구성 (하위 챗봘 정보 포함)
         system_prompt = capabilities.get("system_prompt", "")
