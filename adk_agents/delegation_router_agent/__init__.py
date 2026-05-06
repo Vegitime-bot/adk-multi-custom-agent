@@ -4,6 +4,7 @@ DelegationRouterAgent - JSON 기반 계층 구조의 중앙 라우터
 import os
 import sys
 import json
+import time
 from pathlib import Path
 from typing import AsyncGenerator, Optional, Dict, Any, List
 
@@ -421,10 +422,12 @@ class DelegationRouter:
                 if "422" in error_msg or "badrequest" in error_msg or "function call" in error_msg or "tools" in error_msg:
                     logger.warning(f"[DelegationRouter] Tool calling not supported (422), falling back to text-based route_and_stream: {e}")
                     yield self._sse_data("[Tool calling 지원되지 않는 모델. 텍스트 기반 위임으로 폴백합니다.]")
+                    # 새로운 세션 ID 사용 (이전 세션이 tool context를 포함할 수 있음)
+                    fallback_session_id = f"{session_id}_fb_{int(time.time())}"
                     async for chunk in self.route_and_stream(
                         chatbot_id=chatbot_id,
                         message=message,
-                        session_id=session_id,
+                        session_id=fallback_session_id,
                         user_id=user_id,
                         db_ids=db_ids,
                         history=history
