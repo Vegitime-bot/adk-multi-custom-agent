@@ -218,13 +218,14 @@ class SubAgentFactory:
         
         # RAG 도구 사용 규칙 (has_rag_tool=True인 경우)
         if has_rag_tool:
-            rag_prompt = """
+            rag_prompt = f"""
 
 [RAG 활용 규칙 - 반드시 준수]
-1. 질문에 답하기 전 반드시 rag_search 도구를 사용하여 관련 문서를 검색하세요
-2. 검색 결과가 있으면 그 내용을 기반으로 답변하세요
+1. 질문에 답하기 전 반드시 rag_search_{chatbot_id.replace('-', '_')} 도구를 사용하여 관련 문서를 검색하세요
+2. 검색 결과가 있으면 그 내용을 기반으로 답변하세요 - 문서 내용을 직접 인용하세요
 3. 검색 결과가 없으면 "관련 문서를 찾을 수 없습니다"라고 답변하세요
 4. 절대 검색 없이 추측하거나 일반 지식으로 답변하지 마세요
+5. 답변에는 반드시 출처와 인용 구절을 포함하세요
 """
             base_prompt += rag_prompt
         

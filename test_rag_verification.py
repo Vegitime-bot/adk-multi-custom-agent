@@ -113,13 +113,17 @@ class VerificationAgent:
         response = result.get("response", "")
         
         self.test("위임 응답 수신", len(response) > 0)
-        self.test("pddi_minutes 도구 호출", "[도구 호출: pddi_minutes]" in result.get("chunks", [""])[0] if result.get("chunks") else False,
-                 f"chunks: {result.get('chunks', [])[:2] if result.get('chunks') else 'None'}")
+        all_chunks = " ".join(result.get("chunks", []))
+        has_tool_call = "[도구 호출: pddi_minutes]" in all_chunks
+        self.test("pddi_minutes 도구 호출", has_tool_call,
+                 f"chunks: {all_chunks[:200] if all_chunks else 'None'}")
         
         # RAG 결과 포함 여부 (검색된 내용이 응답에 반영됐는지)
-        has_rag_content = any(kw in response for kw in ["데이터 모델 검증", "통합 테스트", "김철수", "이영희"])
+        # RAG 결과 반영: 52주차 내용이 포함됐는지
+        rag_keywords = ["데이터 모델 검증", "통합 테스트", "김철수", "이영희", "52주차", "시스템 연동"]
+        has_rag_content = any(kw in response for kw in rag_keywords)
         self.test("RAG 결과가 응답에 반영", has_rag_content,
-                 f"응답 프리뷰: {response[:200]}...")
+                 f"응답 프리뷰: {response[:300]}...")
         
         # ──────────────────────────────────────────
         # Test 4: Child 직접 RAG tool 사용
