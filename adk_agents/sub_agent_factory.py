@@ -189,11 +189,19 @@ class SubAgentFactory:
         
         return base_prompt
     
+    def _get_sub_id(self, sub) -> str:
+        """SubChatbotRef 객체 또는 dict에서 id 추출"""
+        if hasattr(sub, 'id'):
+            return sub.id
+        elif isinstance(sub, dict):
+            return sub.get("id", "unknown")
+        return "unknown"
+    
     def _format_sub_chatbots(self, sub_chatbots: List[Dict]) -> str:
         """하위 챗봘 목록 포맷팅"""
         lines = []
         for sub in sub_chatbots:
-            sub_id = sub.get("id", "unknown")
+            sub_id = self._get_sub_id(sub)
             sub_def = self._get_chatbot_def(sub_id)
             if sub_def:
                 desc = sub_def.get("description", "")
@@ -417,7 +425,14 @@ class SubAgentFactory:
         # 하위 챗봘을 Tool로 변환
         tools = []
         for sub in sub_chatbots:
-            sub_id = sub.get("id")
+            # SubChatbotRef 객체 지원 (.id 속성)
+            if hasattr(sub, 'id'):
+                sub_id = sub.id
+            elif isinstance(sub, dict):
+                sub_id = sub.get("id")
+            else:
+                sub_id = None
+            
             if sub_id:
                 sub_tool = self.create_agent_tool(sub_id)
                 if sub_tool:
@@ -465,7 +480,7 @@ class SubAgentFactory:
         """하위 챗봘 목록을 Tool 설명용으로 포맷팅"""
         lines = []
         for sub in sub_chatbots:
-            sub_id = sub.get("id", "unknown")
+            sub_id = self._get_sub_id(sub)
             sub_def = self._get_chatbot_def(sub_id)
             if sub_def:
                 desc = sub_def.get("description", "")

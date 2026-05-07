@@ -53,13 +53,18 @@ class ChatServiceV2:
         
         self.router = get_router()
         
-        # ChatbotManager를 SubAgentFactory에 연결
+        # ChatbotManager를 SubAgentFactory에 연결 (DelegationRouter의 factory + 싱글톤)
         if chatbot_manager:
             try:
-                from adk_agents.sub_agent_factory import SubAgentFactory
-                factory = SubAgentFactory()
+                from adk_agents.sub_agent_factory import get_factory
+                # 1. DelegationRouter 내부 factory에 연결 (실제 사용되는 팩토리)
+                self.router.factory.set_chatbot_manager(chatbot_manager)
+                logger.info("[ChatServiceV2] Connected ChatbotManager to router.factory")
+                
+                # 2. 싱글톤 팩토리에도 연결 (보조용)
+                factory = get_factory()
                 factory.set_chatbot_manager(chatbot_manager)
-                logger.info("[ChatServiceV2] Connected ChatbotManager to SubAgentFactory")
+                logger.info("[ChatServiceV2] Connected ChatbotManager to SubAgentFactory singleton")
             except Exception as e:
                 logger.warning(f"[ChatServiceV2] Failed to connect ChatbotManager: {e}")
         
