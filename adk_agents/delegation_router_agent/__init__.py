@@ -325,14 +325,21 @@ class DelegationRouter:
             
             logger.info(f"[DelegationRouter] Created root agent with tools: {root_agent.name}")
             
-            # 2. RAG 검색 (컨텍스트용)
+            # 챗봇 정의에서 하위 챗봘 여부 확인
+            chatbot_def = self.factory._get_chatbot_def(chatbot_id)
+            has_sub_chatbots = bool(chatbot_def and chatbot_def.get("sub_chatbots"))
+            is_leaf_agent = not has_sub_chatbots
+            
+            # 2. RAG 검색 (컨텍스트용) - standalone leaf는 스킵 (자신의 RAG tool 사용)
             rag_results = []
-            if db_ids:
+            if db_ids and not is_leaf_agent:
                 try:
                     rag_results = await self._search_rag(message, db_ids)
                     logger.info(f"[DelegationRouter] RAG results: {len(rag_results)}")
                 except Exception as e:
                     logger.warning(f"[DelegationRouter] RAG search failed: {e}")
+            elif is_leaf_agent:
+                logger.info(f"[DelegationRouter] Leaf agent, skipping RAG context injection")
             
             # 3. Runner 설정 (ADK 세션 관리 사용)
             # 기존 세션이 있으면 가져오고, 없으면 생성
