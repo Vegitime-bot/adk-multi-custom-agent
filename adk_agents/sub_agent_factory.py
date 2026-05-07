@@ -32,8 +32,27 @@ from adk_agents.tools.delegation_tools import calculate_confidence, select_sub_c
 
 
 # ── 모듈 레벨 헬퍼 ────────────────────────────────────────────────
-def _extract_db_ids(chatbot_def: dict) -> list:
-    """챗봇 정의에서 db_ids 추출 (capabilities / retrieval 모두 지원)"""
+def _extract_db_ids(chatbot_def) -> list:
+    """챗봇 정의에서 db_ids 추출 (dict 또는 Chatbot 객체 지원)"""
+    # Chatbot 객체인 경우 (Pydantic model)
+    if hasattr(chatbot_def, 'capabilities'):
+        cap = chatbot_def.capabilities or {}
+        if hasattr(cap, 'db_ids'):
+            db_ids = cap.db_ids
+            if db_ids:
+                return db_ids if isinstance(db_ids, list) else [db_ids]
+        if hasattr(chatbot_def, 'retrieval') and chatbot_def.retrieval:
+            retrieval = chatbot_def.retrieval
+            if hasattr(retrieval, 'db_ids'):
+                db_ids = retrieval.db_ids
+                if db_ids:
+                    return db_ids if isinstance(db_ids, list) else [db_ids]
+        return []
+    
+    # dict인 경우
+    if not isinstance(chatbot_def, dict):
+        return []
+    
     capabilities = chatbot_def.get("capabilities", {}) or {}
     db_ids = capabilities.get("db_ids", [])
     if db_ids:
@@ -218,10 +237,11 @@ class SubAgentFactory:
         
         # RAG 도구 사용 규칙 (has_rag_tool=True인 경우)
         if has_rag_tool:
+            tool_name = f"rag_search_{chatbot_def['id'].replace('-', '_')}"
             rag_prompt = f"""
 
 [RAG 활용 규칙 - 반드시 준수]
-1. 질문에 답하기 전 반드시 rag_search_{chatbot_id.replace('-', '_')} 도구를 사용하여 관련 문서를 검색하세요
+1. 질문에 답하기 전 반드시 {tool_name} 도구를 사용하여 관련 문서를 검색하세요
 2. 검색 결과가 있으면 그 내용을 기반으로 답변하세요 - 문서 내용을 직접 인용하세요
 3. 검색 결과가 없으면 "관련 문서를 찾을 수 없습니다"라고 답변하세요
 4. 절대 검색 없이 추측하거나 일반 지식으로 답변하지 마세요
