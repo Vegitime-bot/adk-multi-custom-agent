@@ -62,6 +62,11 @@ MOCK_DATA: dict[str, list[dict]] = {
     "db_tech_overview": [
         {"doc_id": "tech_ov1", "content": "기술지원팀: 소프트웨어 개발 지원.", "source": "tech_overview.txt"},
     ],
+    "db_pddi_minutes": [
+        {"doc_id": "pddi_w52", "content": "[PDDI 52주차 주간보고] PDDI 프로젝트 52주차 주간보고입니다.\n\n1. 주요 완료 업무:\n- 데이터 모델 검증 100% 완료\n- 통합 테스트 환경 구축 완료\n\n2. 차주 계획:\n- 시스템 연동 테스트 시작\n- 성능 최적화 검토\n\n3. 이슈사항:\n- API 응답 지연 현상 확인, 해결 중\n\n4. 참여자: 김철수, 이영희, 박민수", "source": "pddi_weekly_52.md"},
+        {"doc_id": "pddi_w51", "content": "[PDDI 51주차 주간보고] PDDI 프로젝트 51주차 주간보고입니다.\n\n1. 주요 완료 업무:\n- API 인터페이스 설계 완료\n- DB 스키마 최종 확정\n\n2. 차주 계획:\n- 데이터 모델 검증 및 통합 환경 구축\n\n3. 참여자: 김철수, 이영희", "source": "pddi_weekly_51.md"},
+        {"doc_id": "pddi_m1", "content": "[PDDI 회의록 2024-12-20] PDDI 프로젝트 주간 회의.\n\n참석자: 김철수, 이영희, 박민수\n\n주요 논의사항:\n- 데이터 통합 방안 확정\n- 테스트 일정 조율\n\n결정사항: 1월 첫째 주 통합 테스트 시작", "source": "pddi_meeting_20241220.md"},
+    ],
 }
 
 
