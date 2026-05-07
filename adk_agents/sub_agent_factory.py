@@ -297,22 +297,42 @@ class SubAgentFactory:
         return None
     
     def _chatbot_def_to_dict(self, chatbot_def) -> Dict:
-        """ChatbotDef 객체를 Dict로 변환"""
+        """ChatbotDef 객체를 Dict로 변환 (Pydantic model 지원)"""
         if isinstance(chatbot_def, dict):
             return chatbot_def
         
-        # ChatbotDef 객체 속성 추출
+        # Pydantic model인 경우
+        if hasattr(chatbot_def, 'model_dump'):
+            # Pydantic v2
+            return chatbot_def.model_dump()
+        elif hasattr(chatbot_def, 'dict'):
+            # Pydantic v1
+            return chatbot_def.dict()
+        
+        # ChatbotDef 객체 속성 추출 (Fallback)
         result = {"id": getattr(chatbot_def, 'id', '')}
         if hasattr(chatbot_def, 'name'):
             result['name'] = chatbot_def.name
         if hasattr(chatbot_def, 'description'):
             result['description'] = chatbot_def.description
         if hasattr(chatbot_def, 'capabilities'):
-            result['capabilities'] = chatbot_def.capabilities
+            cap = chatbot_def.capabilities
+            if hasattr(cap, 'model_dump'):
+                result['capabilities'] = cap.model_dump()
+            elif hasattr(cap, 'dict'):
+                result['capabilities'] = cap.dict()
+            else:
+                result['capabilities'] = cap
         if hasattr(chatbot_def, 'sub_chatbots'):
             result['sub_chatbots'] = chatbot_def.sub_chatbots
         if hasattr(chatbot_def, 'retrieval'):
-            result['retrieval'] = chatbot_def.retrieval
+            ret = chatbot_def.retrieval
+            if hasattr(ret, 'model_dump'):
+                result['retrieval'] = ret.model_dump()
+            elif hasattr(ret, 'dict'):
+                result['retrieval'] = ret.dict()
+            else:
+                result['retrieval'] = ret
         
         return result
     
