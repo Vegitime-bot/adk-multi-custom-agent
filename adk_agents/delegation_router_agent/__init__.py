@@ -330,16 +330,14 @@ class DelegationRouter:
             has_sub_chatbots = bool(chatbot_def and chatbot_def.get("sub_chatbots"))
             is_leaf_agent = not has_sub_chatbots
             
-            # 2. RAG 검색 (컨텍스트용) - standalone leaf는 스킵 (자신의 RAG tool 사용)
+            # 2. RAG 검색 (Leaf agent도 컨텍스트 주입을 위해 수행)
             rag_results = []
-            if db_ids and not is_leaf_agent:
+            if db_ids:
                 try:
                     rag_results = await self._search_rag(message, db_ids)
-                    logger.info(f"[DelegationRouter] RAG results: {len(rag_results)}")
+                    logger.info(f"[DelegationRouter] RAG results: {len(rag_results)} for {chatbot_id} (leaf={is_leaf_agent})")
                 except Exception as e:
                     logger.warning(f"[DelegationRouter] RAG search failed: {e}")
-            elif is_leaf_agent:
-                logger.info(f"[DelegationRouter] Leaf agent, skipping RAG context injection")
             
             # 3. Runner 설정 (ADK 세션 관리 사용)
             # 기존 세션이 있으면 가져오고, 없으면 생성
@@ -367,12 +365,15 @@ class DelegationRouter:
             # 4. 챗봇 정의 로드 (RAG 스킵 판단용)
             chatbot_def = self._load_chatbot_def(chatbot_id)
             has_sub_chatbots = bool(chatbot_def and getattr(chatbot_def, 'sub_chatbots', None))
+            is_leaf_agent = not has_sub_chatbots
             
             # 5. 프롬프트 구성 (RAG 컨텍스트 포함 - tool calling 유지)
             if rag_results:
-                # 하위 에이전트가 없는 경우(단독 실행)나 일반 질문: RAG 제공
-                # 위임 가능한 parent일 때만 주간보고 질문에 RAG 생략
-                if has_sub_chatbots and self._is_weekly_report_query(message):
+                # Leaf agent: 자신의 RAG tool이 있으므로 컨텍스트 주입 스킵
+                if is_leaf_agent:
+                    message_with_context = message
+                    logger.info(f"[DelegationRouter] Standalone leaf agent {chatbot_id}: skipping RAG context injection (agent has own RAG tool)")
+                elif has_sub_chatbots and self._is_weekly_report_query(message):
                     # Parent agent + 주간보고: RAG 생략, tool calling 유도
                     message_with_context = message
                     logger.info(f"[DelegationRouter] Parent + weekly report query: skipping RAG to enable tool calling")
@@ -425,21 +426,12 @@ class DelegationRouter:
                             elif hasattr(part, 'function_call') and part.function_call:
                                 tool_call_detected = True
                                 logger.info(f"[DelegationRouter] Tool call detected: {part.function_call.name}")
-                                tool_info = f"[도구 호출: {part.function_call.name}]"
-                                yield self._sse_data(tool_info)
+                                # 로그만 남기고 yield 없음 (내부 처리용)
                             elif hasattr(part, 'function_response') and part.function_response:
                                 function_response_detected = True
                                 function_response_content = part.function_response
-                                logger.info(f"[DelegationRouter] Tool response: {part.function_response}")
-                                # function_response 내용도 응답에 추가
-                                if hasattr(part.function_response, 'output') and part.function_response.output:
-                                    output_str = str(part.function_response.output)
-                                    full_response.append(output_str)
-                                    yield self._sse_data(output_str)
-                                elif hasattr(part.function_response, 'result') and part.function_response.result:
-                                    result_str = str(part.function_response.result)
-                                    full_response.append(result_str)
-                                    yield self._sse_data(result_str)
+                                logger.info(f"[DelegationRouter] Tool response received")
+                                # 로그만 남기고 yield 없음 (내부 처리용)
                             else:
                                 logger.info(f"[DelegationRouter] Unknown part type: {type(part).__name__}")
                     
@@ -448,11 +440,8 @@ class DelegationRouter:
                         logger.info(f"[DelegationRouter] Event actions: {type(event.actions).__name__}")
                         if hasattr(event.actions, 'invocation_results') and event.actions.invocation_results:
                             function_response_detected = True
-                            for result in event.actions.invocation_results:
-                                logger.info(f"[DelegationRouter] Invocation result: {result}")
-                                result_str = str(result)
-                                full_response.append(result_str)
-                                yield self._sse_data(result_str)
+                            logger.info(f"[DelegationRouter] Invocation results received: {len(event.actions.invocation_results)}")
+                            # 로그만 남기고 yield + append 없음 (내부 처리용)
                         elif hasattr(event.actions, 'model_actions'):
                             logger.info(f"[DelegationRouter] Model actions: {event.actions.model_actions}")
                         else:
@@ -462,23 +451,31 @@ class DelegationRouter:
                 logger.info(f"[DelegationRouter] Runner completed, text_chunks={text_chunks_count}, tool_call={tool_call_detected}, func_response={function_response_detected}")
                 
                 # FAIL-CLOSED: 주간보고/회의록 질문인데 tool_call 없으면
+                # 단, Leaf agent는 RAG 컨텍스트가 있으면 예외 (function calling 미지원 환경 대응)
                 if self._is_weekly_report_query(message) and not tool_call_detected:
-                    fail_message = "[주간보고/회의록 관련 질문은 pddi_minutes 도구 호출이 필요한데, 도구가 호출되지 않았습니다. 라우팅 설정을 확인해주세요.]"
-                    logger.warning(f"[DelegationRouter] FAIL-CLOSED: weekly report query without tool call")
-                    yield self._sse_data(fail_message)
-                    yield self._sse_done(fail_message, rag_results)
-                    return
+                    if is_leaf_agent and rag_results:
+                        # Leaf + RAG 컨텍스트 있음: function calling 없이도 답변 허용
+                        logger.info(f"[DelegationRouter] Leaf agent with RAG context, allowing response without tool call")
+                        # 계속 진행 (아래에서 답변 생성)
+                    else:
+                        # Parent거나 RAG 결과 없음: FAIL-CLOSED
+                        fail_message = "[주간보고/회의록 관련 질문은 pddi_minutes 도구 호출이 필요한데, 도구가 호출되지 않았습니다. 라우팅 설정을 확인해주세요.]"
+                        logger.warning(f"[DelegationRouter] FAIL-CLOSED: weekly report query without tool call (is_leaf={is_leaf_agent}, rag_count={len(rag_results)})")
+                        yield self._sse_data(fail_message)
+                        yield self._sse_done(fail_message, rag_results)
+                        return
                 
                 # FAIL-CLOSED: 근거 없으면 답변 금지
+                # 단, function_response가 있으면 text_chunks 없어도 답변 허용 (tool result만 있는 경우)
                 if tool_call_detected and not function_response_detected:
                     fail_message = "[위임 결과를 받지 못해 답변할 수 없습니다.]"
                     logger.warning(f"[DelegationRouter] FAIL-CLOSED: tool called but no response received")
                     yield self._sse_data(fail_message)
                     yield self._sse_done(fail_message, rag_results)
                     return
-                elif text_chunks_count == 0:
+                elif text_chunks_count == 0 and not function_response_detected:
                     fail_message = "[답변을 생성할 수 없습니다.]"
-                    logger.warning(f"[DelegationRouter] FAIL-CLOSED: no text chunks generated")
+                    logger.warning(f"[DelegationRouter] FAIL-CLOSED: no text chunks generated (func_response={function_response_detected})")
                     yield self._sse_data(fail_message)
                     yield self._sse_done(fail_message, rag_results)
                     return

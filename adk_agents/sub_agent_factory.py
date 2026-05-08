@@ -32,40 +32,28 @@ from adk_agents.tools.delegation_tools import calculate_confidence, select_sub_c
 
 
 # ── 모듈 레벨 헬퍼 ────────────────────────────────────────────────
-def _extract_db_ids(chatbot_def) -> list:
-    """챗봇 정의에서 db_ids 추출 (dict 또는 Chatbot 객체 지원)"""
-    # Chatbot 객체인 경우 (Pydantic model)
-    if hasattr(chatbot_def, 'capabilities'):
-        cap = chatbot_def.capabilities or {}
-        if hasattr(cap, 'db_ids'):
-            db_ids = cap.db_ids
-            if db_ids:
-                return db_ids if isinstance(db_ids, list) else [db_ids]
-        if hasattr(chatbot_def, 'retrieval') and chatbot_def.retrieval:
-            retrieval = chatbot_def.retrieval
-            if hasattr(retrieval, 'db_ids'):
-                db_ids = retrieval.db_ids
-                if db_ids:
-                    return db_ids if isinstance(db_ids, list) else [db_ids]
-        return []
-    
-    # dict인 경우
-    if not isinstance(chatbot_def, dict):
-        return []
-    
-    capabilities = chatbot_def.get("capabilities", {}) or {}
-    db_ids = capabilities.get("db_ids", [])
-    if db_ids:
-        return db_ids if isinstance(db_ids, list) else [db_ids]
-    
-    retrieval = chatbot_def.get("retrieval") or chatbot_def.get("rag")
+def _extract_db_ids(chatbot_def: Dict[str, Any]) -> List[str]:
+    """챗봇 정의에서 db_ids 추출 (capabilities/retrieval 두 구조 모두 지원)"""
+    caps = chatbot_def.get("capabilities", {})
+    if caps and isinstance(caps, dict):
+        db_ids = caps.get("db_ids", [])
+        if db_ids:
+            return db_ids
+
+    retrieval = chatbot_def.get("retrieval")
     if retrieval:
         if hasattr(retrieval, 'db_ids'):
             return list(retrieval.db_ids)
         elif isinstance(retrieval, dict):
             db_ids = retrieval.get("db_ids", [])
             if db_ids:
-                return db_ids if isinstance(db_ids, list) else [db_ids]
+                return db_ids
+
+    if hasattr(chatbot_def, 'capabilities'):
+        caps = chatbot_def.capabilities
+        if hasattr(caps, 'db_ids'):
+            return list(caps.db_ids)
+
     return []
 
 
@@ -114,41 +102,25 @@ class SubAgentFactory:
             )
     
     def create_agent(self, chatbot_def: Dict[str, Any]) -> Agent:
-        """
-        JSON 챗봇 정의를 ADK Agent로 변환
-        
-        Args:
-            chatbot_def: 챗봇 JSON 정의
-            
-        Returns:
-            ADK Agent 인스턴스
-        """
         chatbot_id = chatbot_def["id"]
         agent_name = chatbot_id.replace("-", "_")
-        
-        # 캐시 확인
+
         if chatbot_id in self._agent_cache:
             return self._agent_cache[chatbot_id]
-        
-        logger.info(f"[SubAgentFactory] Creating agent for {chatbot_id} (name: {agent_name})")
-        
-        # 1. db_ids 추출
+
         db_ids = _extract_db_ids(chatbot_def)
-        
-        # 2. RAG tool 생성 (db_ids 있으면)
+        has_rag_tool = len(db_ids) > 0
+        logger.info(f"[SubAgentFactory] Creating agent for {chatbot_id} | db_ids={db_ids} | has_rag_tool={has_rag_tool}")
+
+        system_prompt = self._build_system_prompt(chatbot_def, has_rag_tool)
+
         tools = []
-        has_rag_tool = False
-        if db_ids:
+        if has_rag_tool:
             rag_tool = self._build_rag_tool(chatbot_id, db_ids)
             if rag_tool:
                 tools.append(rag_tool)
-                has_rag_tool = True
-                logger.info(f"[SubAgentFactory] Added RAG tool to {chatbot_id} (dbs: {db_ids})")
-        
-        # 3. 시스템 프롬프트 구성 (has_rag_tool 전달)
-        system_prompt = self._build_system_prompt(chatbot_def, has_rag_tool=has_rag_tool)
-        
-        # 4. Agent 생성
+                logger.info(f"[SubAgentFactory] Added RAG search tool for {chatbot_id} with db_ids={db_ids}")
+
         agent_kwargs = dict(
             name=agent_name,
             model=self.model,
@@ -157,14 +129,48 @@ class SubAgentFactory:
         )
         if tools:
             agent_kwargs["tools"] = tools
-        
+
         agent = Agent(**agent_kwargs)
-        
-        # 캐시 저장
         self._agent_cache[chatbot_id] = agent
-        
-        logger.info(f"[SubAgentFactory] Created agent {chatbot_id} (tools: {len(tools)})")
+        logger.info(f"[SubAgentFactory] Created agent {chatbot_id} with {len(tools)} tools (rag={has_rag_tool})")
         return agent
+
+    def _build_rag_tool(self, chatbot_id: str, db_ids: List[str]) -> Optional[Any]:
+        if not ADK_AVAILABLE or FunctionTool is None:
+            logger.error(f"[SubAgentFactory] FunctionTool not available for RAG tool")
+            return None
+
+        try:
+            from backend.retrieval.ingestion_client import get_ingestion_client
+            ingestion_client = get_ingestion_client()
+        except Exception as e:
+            logger.error(f"[SubAgentFactory] IngestionClient not available: {e}")
+            return None
+
+        def rag_search(query: str) -> str:
+            logger.info(f"[RAG-Tool] chatbot_id={chatbot_id} | query={query[:200]} | db_ids={db_ids}")
+            try:
+                results = ingestion_client.search(db_ids=db_ids, query=query, k=5)
+                result_count = len(results)
+                logger.info(f"[RAG-Tool] chatbot_id={chatbot_id} | result_count={result_count}")
+                if not results:
+                    return "[RAG 검색 결과] 해당 쿼리에 일치하는 문서가 없습니다."
+                formatted = ingestion_client.format_results(results, max_length=500, show_score=True)
+                return f"[RAG 검색 결과] (검색된 문서 수: {result_count})\n\n{formatted}"
+            except Exception as e:
+                logger.error(f"[RAG-Tool] chatbot_id={chatbot_id} | search error: {e}", exc_info=True)
+                return f"[RAG 검색 오류] {str(e)}"
+
+        safe_name = f"rag_search_{chatbot_id.replace('-', '_')}"
+        rag_search.name = safe_name
+        rag_search.doc = (
+            f"Retrieve relevant documents from databases {db_ids} based on the given query. "
+            f"Use this tool to search for information before answering questions."
+        )
+
+        tool = FunctionTool(func=rag_search)
+        logger.info(f"[SubAgentFactory] Created RAG FunctionTool '{safe_name}' for {chatbot_id} with db_ids={db_ids}")
+        return tool
     
     def _build_system_prompt(self, chatbot_def: Dict[str, Any], has_rag_tool: bool = False) -> str:
         """시스템 프롬프트 구성"""
@@ -209,10 +215,18 @@ class SubAgentFactory:
 
 상위 Agent로부터 위임받은 경우, 축적된 컨텍스트를 활용하세요.
 """
+            if has_rag_tool:
+                delegation_prompt += """
+
+[RAG 검색 도구 사용 규칙 - 반드시 준수]
+1. 직접 답변하기 전, rag_search 도구를 사용하여 관련 문서를 검색하세요
+2. 검색 결과 없이 추측하여 답변하지 마세요
+3. 검색 결과가 없으면 하위 전문가에게 위임하거나 '검색 결과가 없습니다'라고 답변하세요
+"""
             base_prompt += delegation_prompt
         else:
             # Leaf 챗봇
-            base_prompt += """
+            leaf_prompt = """
 
 [리프 챗봇 지침]
 당신은 전문 영역의 최하위 챗봇입니다.
@@ -237,20 +251,16 @@ class SubAgentFactory:
 ---
 📚 **출처**: [RAG+LLM] 기술스택 문서 + AI 보충 설명
 """
-        
-        # RAG 도구 사용 규칙 (has_rag_tool=True인 경우)
-        if has_rag_tool:
-            tool_name = f"rag_search_{chatbot_def['id'].replace('-', '_')}"
-            rag_prompt = f"""
+            if has_rag_tool:
+                leaf_prompt += """
 
-[RAG 활용 규칙 - 반드시 준수]
-1. 질문에 답하기 전 반드시 {tool_name} 도구를 사용하여 관련 문서를 검색하세요
-2. 검색 결과가 있으면 그 내용을 기반으로 답변하세요 - 문서 내용을 직접 인용하세요
-3. 검색 결과가 없으면 "관련 문서를 찾을 수 없습니다"라고 답변하세요
-4. 절대 검색 없이 추측하거나 일반 지식으로 답변하지 마세요
-5. 답변에는 반드시 출처와 인용 구절을 포함하세요
+[RAG 검색 도구 사용 규칙 - 반드시 준수]
+1. 질문에 답하기 전, 반드시 rag_search 도구를 사용하여 관련 문서를 검색하세요
+2. 검색 결과 없이 추측하여 답변하지 마세요
+3. 검색 결과가 없으면 '해당 질문에 대한 문서가 없습니다'라고 답변하세요
+4. 답변은 검색된 문서 내용에만 기반하여 작성하세요
 """
-            base_prompt += rag_prompt
+            base_prompt += leaf_prompt
         
         return base_prompt
     
@@ -477,39 +487,6 @@ class SubAgentFactory:
         except Exception as e:
             logger.error(f"[SubAgentFactory] Failed to create AgentTool: {e}")
             return None
-    
-    def _build_rag_tool(self, chatbot_id: str, db_ids: list):
-        """
-        RAG 검색 FunctionTool 생성.
-        IngestionClient.search(db_ids=db_ids, query=query) 호출.
-        """
-        if not ADK_AVAILABLE or FunctionTool is None:
-            return None
-        if not db_ids:
-            return None
-
-        def _rag_search(query: str) -> str:
-            """RAG 검색 도구"""
-            try:
-                from backend.retrieval.ingestion_client import get_ingestion_client
-                client = get_ingestion_client()
-                results = client.search(db_ids=db_ids, query=query)
-                if not results:
-                    return "[RAG 검색 결과 없음]"
-                lines = [f"[RAG 검색 결과 - {len(results)}개 문서]"]
-                for i, doc in enumerate(results, 1):
-                    content = doc.get("content", "")
-                    source = doc.get("source", doc.get("db_id", "unknown"))
-                    score = doc.get("score", 0)
-                    lines.append(f"{i}. [출처: {source}] [유사도: {score:.3f}] {content[:300]}")
-                return "\n\n".join(lines)
-            except Exception as e:
-                logger.error(f"[RAG Tool {chatbot_id}] error: {e}")
-                return f"[RAG 검색 오류: {e}]"
-
-        _rag_search.__name__ = f"rag_search_{chatbot_id.replace(chr(45), chr(95))}"
-        _rag_search.__doc__ = f"RAG 검색 도구: {', '.join(db_ids)} DB에서 관련 문서를 검색합니다."
-        return FunctionTool(func=_rag_search)
 
     def create_root_agent_with_tools(self, chatbot_id: str) -> Optional[Any]:
         """
@@ -568,13 +545,23 @@ class SubAgentFactory:
                 logger.info(f"[SubAgentFactory] Added root RAG tool to {chatbot_id} (dbs: {db_ids})")
         
         # 시스템 프롬프트 구성
-        system_prompt = self._build_system_prompt(chatbot_def, has_rag_tool=has_rag_tool)
+        system_prompt = self._build_system_prompt(chatbot_def, has_rag_tool)
         
         # RAG 기반 답변 시 출처 명시 지시
         system_prompt += "\n\n[출처 명시 규칙]\n"
         system_prompt += "답변 시 참고한 문서의 출처(데이터베이스 ID, 문서 제목 등)를 명확히 표시해주세요.\n"
         system_prompt += "예시: '이 내용은 [출처: db_hr_policy] 문서를 참고하였습니다.' 또는 '참고: db_tech_overview'\n"
         system_prompt += "여러 출처를 참고한 경우 모든 출처를 나열해주세요.\n"
+        
+        # [출처 명시 규칙] 바로 아래에 RAG tool 사용 지시 추가
+        if has_rag_tool:
+            system_prompt += """
+[RAG 검색 도구 사용 규칙 - 반드시 준수]
+1. 질문에 답하기 전, 반드시 rag_search 도구를 사용하여 관련 문서를 검색하세요
+2. 검색 결과 없이 추측하여 답변하지 마세요
+3. 검색 결과가 없으면 '해당 질문에 대한 문서가 없습니다'라고 답변하세요
+4. 답변은 검색된 문서 내용에만 기반하여 작성하세요
+"""
         
         if sub_chatbots:
             sub_info = self._format_sub_chatbots_for_tools(sub_chatbots)
