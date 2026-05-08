@@ -465,16 +465,19 @@ class SubAgentFactory:
     
     def create_agent_tool(self, chatbot_id: str) -> Optional[Any]:
         """
-        JSON → Agent → AgentTool 변환
+        JSON → Agent → custom FunctionTool 변환
+        
+        AgentTool 대신 FunctionTool을 사용하여 하위 Agent의
+        text 응답을 정확히 수집합니다.
         
         Args:
             chatbot_id: 챗봇 ID
             
         Returns:
-            AgentTool 인스턴스 또는 None
+            FunctionTool 인스턴스 또는 None
         """
-        if not ADK_AVAILABLE or AgentTool is None:
-            logger.error("[SubAgentFactory] ADK or AgentTool not available")
+        if not ADK_AVAILABLE or FunctionTool is None:
+            logger.error("[SubAgentFactory] ADK or FunctionTool not available")
             return None
         
         # JSON 정의 로드
@@ -489,13 +492,94 @@ class SubAgentFactory:
             logger.warning(f"[SubAgentFactory] Failed to create agent for {chatbot_id}")
             return None
         
-        # Agent → Tool 변환
+        # Agent → custom FunctionTool 변환
+        def _invoke_subagent(request: str) -> str:
+            """하위 Agent를 실행하고 text 응답을 수집합니다."""
+            try:
+                from google.adk.runners import Runner
+                from google.adk.sessions import InMemorySessionService
+                from google.genai import types
+                import asyncio
+                import threading
+                
+                async def _run_async():
+                    session_service = InMemorySessionService()
+                    session = await session_service.create_session(
+                        app_name=chatbot_id, 
+                        user_id="subagent",
+                        state={}
+                    )
+                    runner = Runner(
+                        agent=agent, 
+                        app_name=chatbot_id, 
+                        session_service=session_service
+                    )
+                    
+                    content = types.Content(
+                        role='user', 
+                        parts=[types.Part(text=request)]
+                    )
+                    
+                    full_response = []
+                    
+                    async for event in runner.run_async(
+                        user_id="subagent",
+                        session_id=session.id,
+                        new_message=content
+                    ):
+                        if event.content and event.content.parts:
+                            for part in event.content.parts:
+                                if hasattr(part, 'text') and part.text:
+                                    full_response.append(part.text)
+                    
+                    return "".join(full_response)
+                
+                # 동기 컨텍스트에서 비동기 실행
+                def _run_in_new_loop():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        return loop.run_until_complete(_run_async())
+                    finally:
+                        loop.close()
+                
+                try:
+                    loop = asyncio.get_running_loop()
+                    # 이미 실행 중인 루프가 있으면 새 스레드에서 실행
+                    if loop.is_running():
+                        result_queue = []
+                        def _thread_target():
+                            result_queue.append(_run_in_new_loop())
+                        t = threading.Thread(target=_thread_target)
+                        t.start()
+                        t.join(timeout=60)
+                        if result_queue:
+                            result = result_queue[0]
+                        else:
+                            return "[하위 Agent 실행 시간 초과]"
+                    else:
+                        result = loop.run_until_complete(_run_async())
+                except RuntimeError:
+                    # 루프가 없으면 새로 생성
+                    result = _run_in_new_loop()
+                
+                logger.info(f"[SubAgentFactory] Sub-agent {chatbot_id} returned {len(result)} chars")
+                return result or "[하위 Agent가 빈 응답을 반환했습니다]"
+            except Exception as e:
+                logger.error(f"[SubAgentFactory] Sub-agent {chatbot_id} error: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                return f"[하위 Agent 실행 오류: {e}]"
+        
+        _invoke_subagent.__name__ = chatbot_id.replace("-", "_")
+        _invoke_subagent.__doc__ = f"{chatbot_def.get('name', chatbot_id)}에게 위임합니다."
+        
         try:
-            tool = AgentTool(agent=agent)
-            logger.info(f"[SubAgentFactory] Created AgentTool for {chatbot_id}")
+            tool = FunctionTool(func=_invoke_subagent)
+            logger.info(f"[SubAgentFactory] Created custom FunctionTool for {chatbot_id}")
             return tool
         except Exception as e:
-            logger.error(f"[SubAgentFactory] Failed to create AgentTool: {e}")
+            logger.error(f"[SubAgentFactory] Failed to create FunctionTool: {e}")
             return None
 
     def create_root_agent_with_tools(self, chatbot_id: str) -> Optional[Any]:

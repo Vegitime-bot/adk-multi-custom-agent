@@ -431,7 +431,26 @@ class DelegationRouter:
                                 function_response_detected = True
                                 function_response_content = part.function_response
                                 logger.info(f"[DelegationRouter] Tool response received")
-                                # 로그만 남기고 yield 없음 (내부 처리용)
+                                # function_response의 text 내용을 yield
+                                if hasattr(part, 'text') and part.text:
+                                    chunk = part.text
+                                    full_response.append(chunk)
+                                    text_chunks_count += 1
+                                    logger.info(f"[DelegationRouter] Yielding tool result text: {chunk[:50]}...")
+                                    yield self._sse_data(chunk)
+                                # function_response에 result가 있으면 직접 yield
+                                elif hasattr(part.function_response, 'response') and part.function_response.response:
+                                    try:
+                                        result = part.function_response.response
+                                        if isinstance(result, dict) and 'result' in result:
+                                            result_text = result['result']
+                                            if result_text and isinstance(result_text, str) and len(result_text) > 0:
+                                                full_response.append(result_text)
+                                                text_chunks_count += 1
+                                                logger.info(f"[DelegationRouter] Yielding function response result: {result_text[:50]}...")
+                                                yield self._sse_data(result_text)
+                                    except Exception as e:
+                                        logger.debug(f"[DelegationRouter] Error extracting function response: {e}")
                             else:
                                 logger.info(f"[DelegationRouter] Unknown part type: {type(part).__name__}")
                     

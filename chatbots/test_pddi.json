@@ -1,0 +1,22 @@
+{
+  "id": "test_pddi",
+  "name": "PDDI 전문가",
+  "description": "PDDI 시스템 전문가. 주간보고는 하위 전문가에게 위임합니다.",
+  "level": 1,
+  "active": true,
+  "parent_id": "test_business",
+  "capabilities": {
+    "system_prompt": "당신은 PDDI(제품 설계 데이터 통합) 시스템 전문가입니다. 기술 문서, 설계 규격, 개발 진행상황 등을 답변합니다.\n\n중요 규칙 - 반드시 준수:\n- '주간보고', '회의록', 'minutes'가 포함된 질문을 받으면 RAG 검색을 하지 마세요\n- 즉시 test_minutes 도구를 호출하여 위임하세요\n- test_minutes는 PDDI 주간보고 및 회의록 전문가입니다",
+    "db_ids": ["db_tech_stack", "db_dev_guide"]
+  },
+  "policy": {
+    "delegation_threshold": 70
+  },
+  "sub_chatbots": [
+    {
+      "id": "test_minutes",
+      "level": 2,
+      "default_role": "agent"
+    }
+  ]
+}
