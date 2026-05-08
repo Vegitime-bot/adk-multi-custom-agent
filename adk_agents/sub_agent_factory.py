@@ -58,11 +58,14 @@ def _extract_db_ids(chatbot_def) -> list:
     if db_ids:
         return db_ids if isinstance(db_ids, list) else [db_ids]
     
-    retrieval = chatbot_def.get("retrieval") or chatbot_def.get("rag") or {}
-    if isinstance(retrieval, dict):
-        db_ids = retrieval.get("db_ids", [])
-        if db_ids:
-            return db_ids if isinstance(db_ids, list) else [db_ids]
+    retrieval = chatbot_def.get("retrieval") or chatbot_def.get("rag")
+    if retrieval:
+        if hasattr(retrieval, 'db_ids'):
+            return list(retrieval.db_ids)
+        elif isinstance(retrieval, dict):
+            db_ids = retrieval.get("db_ids", [])
+            if db_ids:
+                return db_ids if isinstance(db_ids, list) else [db_ids]
     return []
 
 
