@@ -121,6 +121,16 @@ class SubAgentFactory:
                 tools.append(rag_tool)
                 logger.info(f"[SubAgentFactory] Added RAG search tool for {chatbot_id} with db_ids={db_ids}")
 
+        # 하위 챗봘을 AgentTool로 등록 (N단계 위임 지원)
+        sub_chatbots = chatbot_def.get("sub_chatbots", [])
+        for sub in sub_chatbots:
+            sub_id = self._get_sub_id(sub)
+            if sub_id:
+                sub_tool = self.create_agent_tool(sub_id)
+                if sub_tool:
+                    tools.append(sub_tool)
+                    logger.info(f"[SubAgentFactory] Added sub tool {sub_id} to {chatbot_id}")
+
         agent_kwargs = dict(
             name=agent_name,
             model=self.model,
