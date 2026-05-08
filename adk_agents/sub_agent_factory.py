@@ -11,6 +11,10 @@ from typing import Dict, List, Optional, Any
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# 중첩 이벤트 루프 허용 (프로세스 레벨에서 한 번만)
+import nest_asyncio
+nest_asyncio.apply()
+
 from backend.debug_logger import logger
 
 # ADK import
@@ -233,7 +237,8 @@ class SubAgentFactory:
 2. 검색 결과 없이 추측하여 답변하지 마세요
 3. 검색 결과가 없으면 하위 전문가에게 위임하거나 '검색 결과가 없습니다'라고 답변하세요
 """
-            base_prompt += delegation_prompt
+            # 사용자 프롬프트를 가장 마지막에 배치 (우선순위 최고)
+            base_prompt = delegation_prompt + "\n\n" + base_prompt
         else:
             # Leaf 챗봇
             leaf_prompt = """
@@ -270,7 +275,8 @@ class SubAgentFactory:
 3. 검색 결과가 없으면 '해당 질문에 대한 문서가 없습니다'라고 답변하세요
 4. 답변은 검색된 문서 내용에만 기반하여 작성하세요
 """
-            base_prompt += leaf_prompt
+            # 사용자 프롬프트를 가장 마지막에 배치 (우선순위 최고)
+            base_prompt = leaf_prompt + "\n\n" + base_prompt
         
         return base_prompt
     
@@ -501,6 +507,10 @@ class SubAgentFactory:
                 from google.genai import types
                 import asyncio
                 import threading
+                import nest_asyncio
+                
+                # 요청 내용 로깅
+                logger.info(f"[SubAgentFactory] Invoking sub-agent {chatbot_id} with request: {request[:200]}...")
                 
                 async def _run_async():
                     session_service = InMemorySessionService()
@@ -534,10 +544,11 @@ class SubAgentFactory:
                     
                     return "".join(full_response)
                 
-                # 동기 컨텍스트에서 비동기 실행
+                # 동기 컨텍스트에서 비동기 실행 (threading + nest_asyncio)
                 def _run_in_new_loop():
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
+                    nest_asyncio.apply(loop)  # 중첩 루프 허용
                     try:
                         return loop.run_until_complete(_run_async())
                     finally:
@@ -549,7 +560,11 @@ class SubAgentFactory:
                     if loop.is_running():
                         result_queue = []
                         def _thread_target():
-                            result_queue.append(_run_in_new_loop())
+                            try:
+                                result_queue.append(_run_in_new_loop())
+                            except Exception as e:
+                                logger.error(f"[SubAgentFactory] Thread execution error: {e}")
+                                result_queue.append(f"[Thread error: {e}]")
                         t = threading.Thread(target=_thread_target)
                         t.start()
                         t.join(timeout=60)
@@ -565,6 +580,11 @@ class SubAgentFactory:
                 
                 logger.info(f"[SubAgentFactory] Sub-agent {chatbot_id} returned {len(result)} chars")
                 return result or "[하위 Agent가 빈 응답을 반환했습니다]"
+            except Exception as e:
+                logger.error(f"[SubAgentFactory] Sub-agent {chatbot_id} error: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+                return f"[하위 Agent 실행 오류: {e}]"
             except Exception as e:
                 logger.error(f"[SubAgentFactory] Sub-agent {chatbot_id} error: {e}")
                 import traceback

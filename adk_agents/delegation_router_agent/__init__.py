@@ -430,27 +430,10 @@ class DelegationRouter:
                             elif hasattr(part, 'function_response') and part.function_response:
                                 function_response_detected = True
                                 function_response_content = part.function_response
-                                logger.info(f"[DelegationRouter] Tool response received")
-                                # function_response의 text 내용을 yield
-                                if hasattr(part, 'text') and part.text:
-                                    chunk = part.text
-                                    full_response.append(chunk)
-                                    text_chunks_count += 1
-                                    logger.info(f"[DelegationRouter] Yielding tool result text: {chunk[:50]}...")
-                                    yield self._sse_data(chunk)
-                                # function_response에 result가 있으면 직접 yield
-                                elif hasattr(part.function_response, 'response') and part.function_response.response:
-                                    try:
-                                        result = part.function_response.response
-                                        if isinstance(result, dict) and 'result' in result:
-                                            result_text = result['result']
-                                            if result_text and isinstance(result_text, str) and len(result_text) > 0:
-                                                full_response.append(result_text)
-                                                text_chunks_count += 1
-                                                logger.info(f"[DelegationRouter] Yielding function response result: {result_text[:50]}...")
-                                                yield self._sse_data(result_text)
-                                    except Exception as e:
-                                        logger.debug(f"[DelegationRouter] Error extracting function response: {e}")
+                                logger.info(f"[DelegationRouter] Tool response received (internal, not yielding)")
+                                # function_response는 내부 처리용으로만 사용, yield 하지 않음
+                                # LLM이 function_response를 바탕으로 새 text를 생성하면 그때 yield
+                                pass
                             else:
                                 logger.info(f"[DelegationRouter] Unknown part type: {type(part).__name__}")
                     
@@ -469,14 +452,9 @@ class DelegationRouter:
                 
                 logger.info(f"[DelegationRouter] Runner completed, text_chunks={text_chunks_count}, tool_call={tool_call_detected}, func_response={function_response_detected}")
                 
-                # FAIL-CLOSED: 주간보고/회의록 질문인데 tool_call 없으면
-                # 단, Leaf agent는 RAG 컨텍스트가 있으면 예외 (function calling 미지원 환경 대응)
-                if self._is_weekly_report_query(message) and not tool_call_detected:
-                    if is_leaf_agent and rag_results:
-                        # Leaf + RAG 컨텍스트 있음: function calling 없이도 답변 허용
-                        logger.info(f"[DelegationRouter] Leaf agent with RAG context, allowing response without tool call")
-                        # 계속 진행 (아래에서 답변 생성)
-                    else:
+                # 최종 응답에서 중복 제거
+                # chunk stream으로 이미 전달된 내용은 done event에서 제외
+                yield self._sse_done("", rag_context)
                         # Parent거나 RAG 결과 없음: FAIL-CLOSED
                         fail_message = "[주간보고/회의록 관련 질문은 pddi_minutes 도구 호출이 필요한데, 도구가 호출되지 않았습니다. 라우팅 설정을 확인해주세요.]"
                         logger.warning(f"[DelegationRouter] FAIL-CLOSED: weekly report query without tool call (is_leaf={is_leaf_agent}, rag_count={len(rag_results)})")
