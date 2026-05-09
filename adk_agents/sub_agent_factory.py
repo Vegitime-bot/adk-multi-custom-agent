@@ -208,7 +208,8 @@ class SubAgentFactory:
 1. 질문에 대해 먼저 스스로 답변을 시도하세요
 2. 답변 끝에 "CONFIDENCE: XX" 형식으로 신뢰도를 표시하세요 (0-100)
 3. 신뢰도가 {threshold}% 미만이거나 전문 상담이 필요하면 하위 전문가에게 위임하세요
-4. 하위 위임 시 "DELEGATE_TO: [chatbot_id]"로 명시하세요
+4. 하위 전문가에게 위임할 때는 반드시 해당 전문가의 도구를 호출하세요
+5. 텍스트로 "DELEGATE_TO:"를 쓰지 마세요. 반드시 도구 호출(function calling)을 사용하세요
 
 [출처 표시 규칙 - 반드시 준수]
 답변 마지막에 반드시 다음 형식으로 출처를 표시하세요:
@@ -558,19 +559,20 @@ class SubAgentFactory:
                     loop = asyncio.get_running_loop()
                     # 이미 실행 중인 루프가 있으면 새 스레드에서 실행
                     if loop.is_running():
-                        result_queue = []
+                        import queue as queue_module
+                        result_queue = queue_module.Queue()
                         def _thread_target():
                             try:
-                                result_queue.append(_run_in_new_loop())
+                                result_queue.put(_run_in_new_loop())
                             except Exception as e:
                                 logger.error(f"[SubAgentFactory] Thread execution error: {e}")
-                                result_queue.append(f"[Thread error: {e}]")
+                                result_queue.put(f"[Thread error: {e}]")
                         t = threading.Thread(target=_thread_target)
                         t.start()
                         t.join(timeout=60)
-                        if result_queue:
-                            result = result_queue[0]
-                        else:
+                        try:
+                            result = result_queue.get_nowait()
+                        except queue_module.Empty:
                             return "[하위 Agent 실행 시간 초과]"
                     else:
                         result = loop.run_until_complete(_run_async())
@@ -580,11 +582,6 @@ class SubAgentFactory:
                 
                 logger.info(f"[SubAgentFactory] Sub-agent {chatbot_id} returned {len(result)} chars")
                 return result or "[하위 Agent가 빈 응답을 반환했습니다]"
-            except Exception as e:
-                logger.error(f"[SubAgentFactory] Sub-agent {chatbot_id} error: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
-                return f"[하위 Agent 실행 오류: {e}]"
             except Exception as e:
                 logger.error(f"[SubAgentFactory] Sub-agent {chatbot_id} error: {e}")
                 import traceback
