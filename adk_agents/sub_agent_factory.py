@@ -472,10 +472,11 @@ class SubAgentFactory:
     
     def create_agent_tool(self, chatbot_id: str) -> Optional[Any]:
         """
-        JSON → Agent → custom FunctionTool 변환
+        JSON → Agent → FunctionTool 변환 (ThreadPoolExecutor 격리 실행)
         
-        AgentTool 대신 FunctionTool을 사용하여 하위 Agent의
-        text 응답을 정확히 수집합니다.
+        FunctionTool을 사용하고, 내부에서 ThreadPoolExecutor로
+        완전히 격리된 스레드에서 비동기 Agent를 실행합니다.
+        이 방식으로 event loop 충돌을 피할 수 있습니다.
         
         Args:
             chatbot_id: 챗봇 ID
@@ -499,7 +500,9 @@ class SubAgentFactory:
             logger.warning(f"[SubAgentFactory] Failed to create agent for {chatbot_id}")
             return None
         
-        # Agent → custom FunctionTool 변환
+        # Agent → FunctionTool 변환 (ThreadPoolExecutor 격리)
+        import concurrent.futures
+        
         def _invoke_subagent(request: str) -> str:
             """하위 Agent를 실행하고 text 응답을 수집합니다."""
             try:
@@ -507,23 +510,20 @@ class SubAgentFactory:
                 from google.adk.sessions import InMemorySessionService
                 from google.genai import types
                 import asyncio
-                import threading
-                import nest_asyncio
                 
-                # 요청 내용 로깅
                 logger.info(f"[SubAgentFactory] Invoking sub-agent {chatbot_id} with request: {request[:200]}...")
                 
                 async def _run_async():
                     session_service = InMemorySessionService()
-                    session = await session_service.create_session(
-                        app_name=chatbot_id, 
-                        user_id="subagent",
-                        state={}
-                    )
                     runner = Runner(
                         agent=agent, 
                         app_name=chatbot_id, 
                         session_service=session_service
+                    )
+                    session = await session_service.create_session(
+                        app_name=chatbot_id, 
+                        user_id="subagent",
+                        state={}
                     )
                     
                     content = types.Content(
@@ -545,47 +545,30 @@ class SubAgentFactory:
                     
                     return "".join(full_response)
                 
-                # 동기 컨텍스트에서 비동기 실행 (threading + nest_asyncio)
-                def _run_in_new_loop():
+                def _thread_target():
+                    """새 스레드에서 새 event loop로 실행"""
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
-                    nest_asyncio.apply(loop)  # 중첩 루프 허용
                     try:
                         return loop.run_until_complete(_run_async())
                     finally:
                         loop.close()
                 
+                # 메인 스레드에 이미 event loop가 있으면 새 스레드에서 실행
                 try:
                     loop = asyncio.get_running_loop()
-                    # 이미 실행 중인 루프가 있으면 새 스레드에서 실행
                     if loop.is_running():
-                        import queue as queue_module
-                        result_queue = queue_module.Queue()
-                        def _thread_target():
-                            try:
-                                result_queue.put(_run_in_new_loop())
-                            except Exception as e:
-                                logger.error(f"[SubAgentFactory] Thread execution error: {e}")
-                                result_queue.put(f"[Thread error: {e}]")
-                        t = threading.Thread(target=_thread_target)
-                        t.start()
-                        t.join(timeout=60)
-                        try:
-                            result = result_queue.get_nowait()
-                        except queue_module.Empty:
-                            return "[하위 Agent 실행 시간 초과]"
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(_thread_target)
+                            return future.result(timeout=60)
                     else:
-                        result = loop.run_until_complete(_run_async())
+                        return loop.run_until_complete(_run_async())
                 except RuntimeError:
-                    # 루프가 없으면 새로 생성
-                    result = _run_in_new_loop()
+                    # 루프가 없으면 직접 실행
+                    return asyncio.run(_run_async())
                 
-                logger.info(f"[SubAgentFactory] Sub-agent {chatbot_id} returned {len(result)} chars")
-                return result or "[하위 Agent가 빈 응답을 반환했습니다]"
             except Exception as e:
-                logger.error(f"[SubAgentFactory] Sub-agent {chatbot_id} error: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
+                logger.error(f"[SubAgentFactory] Sub-agent {chatbot_id} error: {e}", exc_info=True)
                 return f"[하위 Agent 실행 오류: {e}]"
         
         _invoke_subagent.__name__ = chatbot_id.replace("-", "_")
@@ -593,7 +576,7 @@ class SubAgentFactory:
         
         try:
             tool = FunctionTool(func=_invoke_subagent)
-            logger.info(f"[SubAgentFactory] Created custom FunctionTool for {chatbot_id}")
+            logger.info(f"[SubAgentFactory] Created FunctionTool for {chatbot_id} (ThreadPoolExecutor)")
             return tool
         except Exception as e:
             logger.error(f"[SubAgentFactory] Failed to create FunctionTool: {e}")
