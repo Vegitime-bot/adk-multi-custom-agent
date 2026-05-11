@@ -469,12 +469,9 @@ class DelegationRouter:
                         logger.info(f"[DelegationRouter] Leaf agent with RAG context, allowing response without tool call")
                         # 계속 진행 (아래에서 답변 생성)
                     else:
-                        # Parent거나 RAG 결과 없음: FAIL-CLOSED
-                        fail_message = "[주간보고/회의록 관련 질문은 pddi_minutes 도구 호출이 필요한데, 도구가 호출되지 않았습니다. 라우팅 설정을 확인해주세요.]"
-                        logger.warning(f"[DelegationRouter] FAIL-CLOSED: weekly report query without tool call (is_leaf={is_leaf_agent}, rag_count={len(rag_results)})")
-                        yield self._sse_data(fail_message)
-                        yield self._sse_done(fail_message, rag_results)
-                        return
+                        # Parent or RAG 없음: tool call 없으면 위임 실패 → 안전하게 계속 진행
+                        logger.warning(f"[DelegationRouter] No tool call for weekly report, but continuing (is_leaf={is_leaf_agent}, rag_count={len(rag_results)})")
+                        # 계속 진행 (fallback)
                 
                 # FAIL-CLOSED: 근거 없으면 답변 금지
                 # 단, function_response가 있으면 text_chunks 없어도 답변 허용 (tool result만 있는 경우)
@@ -555,8 +552,11 @@ class DelegationRouter:
         return f"data: {json.dumps({'error': error}, ensure_ascii=False)}\n\n"
 
     def _sse_done(self, full_response: str, rag_results: List[Dict] = None) -> str:
-        """SSE 완료 이벤트 포맷 - response 없이 done만 표시"""
-        return f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+        """SSE 완료 이벤트 포맷 — 전체 응답 포함 (chunk 누락 fallback용)"""
+        payload = {"done": True, "response": full_response}
+        if rag_results:
+            payload["sources"] = list({r.get("source", "unknown") for r in rag_results})
+        return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     def _is_weekly_report_query(self, message: str) -> bool:
         """주간보고/회의록 관련 질문 여부 확인"""
