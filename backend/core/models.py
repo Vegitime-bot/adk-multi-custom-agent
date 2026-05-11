@@ -232,6 +232,8 @@ class ChatSession:
     user_knox_id: str
     role_override: dict[str, ExecutionRole] = field(default_factory=dict)
     active_level: int = 1
+    created_at: str = ""  # ISO format timestamp
+    last_accessed: str = ""  # ISO format timestamp
 
     def to_dict(self) -> dict:
         return {
@@ -240,6 +242,8 @@ class ChatSession:
             "user_knox_id":  self.user_knox_id,
             "role_override": {k: v.value for k, v in self.role_override.items()},
             "active_level":  self.active_level,
+            "created_at":    self.created_at,
+            "last_accessed": self.last_accessed,
         }
 
 

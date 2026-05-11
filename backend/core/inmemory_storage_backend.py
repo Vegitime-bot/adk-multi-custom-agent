@@ -64,12 +64,17 @@ class InMemorySessionStorage(SessionStorageBackend):
                 except ValueError:
                     overrides[bot_id] = ExecutionRole.AGENT
         
+        from datetime import datetime
+        now = datetime.now().isoformat()
+        
         session = ChatSession(
             session_id=sid,
             chatbot_id=chatbot_id,
             user_knox_id=user_knox_id,
             role_override=overrides,
             active_level=active_level,
+            created_at=now,
+            last_accessed=now,
         )
         self._sessions[sid] = session
         logger.info(f"[InMemorySessionStorage] Created session: {sid}")

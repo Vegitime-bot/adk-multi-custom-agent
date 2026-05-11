@@ -231,7 +231,7 @@ def list_sessions(r: Request):
     """사용자 세션 목록 조회"""
     u = auth.get_current_user(r)
     _, sm, _, _ = _d(r)
-    ss = sm.list_sessions()
+    ss = sm.list_sessions(user_knox_id=u["knox_id"])  # ✅ 사용자별 필터링
     return {
         "sessions": [
             {"session_id": s.get("session_id"), "chatbot_id": s.get("chatbot_id")}
