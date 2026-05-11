@@ -260,11 +260,16 @@ async def _chat_v2(b: ChatR, r: Request, u, cbm, sm, mm):
         )
         logger.info(f"[_chat_v2] Got service, calling chat_stream")
         
+        # SessionManager가 만든 세션 ID 사용 (b.session_id 무시)
+        ss = sm.get_or_create(b.chatbot_id, u["knox_id"], b.session_id)
+        session_id = ss.session_id
+        logger.info(f"[_chat_v2] Using session_id: {session_id}")
+        
         # 스트리밍 응답
         stream = service.chat_stream(
             chatbot_id=b.chatbot_id,
             message=b.message,
-            session_id=b.session_id or f"v2-{b.chatbot_id}-{int(time.time()*1000)}",
+            session_id=session_id,
             user_id=u["knox_id"],
             mode=b.mode
         )

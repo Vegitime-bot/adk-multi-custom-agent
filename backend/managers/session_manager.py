@@ -1,8 +1,8 @@
 """
-managers/session_manager.py - 세션 관리 (Storage Backend 추상화 적용)
+managers/session_manager.py - 세션 관리 (Storage Backend 추상화 + PostgreSQL 영속 저장)
 
 StorageBackend 추상화를 사용하여 ADK/인메모리 듀얼 모드를 관리합니다.
-USE_ADK 환경변수에 따라 자동으로 구현체가 선택됩니다.
+USE_MOCK_DB=false 시 PostgreSQL에 세션 메타데이터도 영속 저장합니다.
 """
 
 from __future__ import annotations
@@ -23,22 +23,33 @@ class SessionManager:
     """
     세션 관리자.
     
-    StorageBackend 추상화를 통해 ADK/인메모리 구현을 투명하게 처리합니다.
+    StorageBackend 추상화를 통해 ADK/인메모리 구현을 투명하게 처리하고,
+    PostgreSQL에 세션 메타데이터를 영속 저장합니다.
     """
     
-    def __init__(self, backend: Optional[SessionStorageBackend] = None):
+    def __init__(
+        self,
+        backend: Optional[SessionStorageBackend] = None,
+        pg_repo=None,
+    ):
         """
         SessionManager를 초기화합니다.
         
         Args:
             backend: 사용할 SessionStorageBackend (None이면 Factory에서 자동 생성)
+            pg_repo: PostgreSQL 세션 저장소 (None이면 영속 저장 안함)
         """
         if backend is None:
             self._backend = StorageBackendFactory.create_session_backend()
         else:
             self._backend = backend
         
-        logger.info(f"[SessionManager] Initialized with {type(self._backend).__name__}")
+        self._pg_repo = pg_repo
+        
+        logger.info(
+            f"[SessionManager] Initialized with {type(self._backend).__name__}"
+            f"{' + PostgreSQL' if pg_repo else ''}"
+        )
     
     def create_session(
         self,
@@ -48,14 +59,24 @@ class SessionManager:
         role_override: Optional[dict[str, str]] = None,
         active_level: int = 1,
     ) -> ChatSession:
-        """새 세션을 생성합니다."""
-        return self._backend.create_session(
+        """새 세션을 생성하고 PostgreSQL에도 저장합니다."""
+        session = self._backend.create_session(
             chatbot_id=chatbot_id,
             user_knox_id=user_knox_id,
             session_id=session_id,
             role_override=role_override,
             active_level=active_level,
         )
+        
+        # PostgreSQL에 세션 메타데이터 저장
+        if self._pg_repo:
+            try:
+                self._pg_repo.save(session)
+                logger.info(f"[SessionManager] Session saved to PostgreSQL: {session.session_id}")
+            except Exception as e:
+                logger.error(f"[SessionManager] Failed to save session to PostgreSQL: {e}")
+        
+        return session
     
     def get_session(self, session_id: str) -> Optional[ChatSession]:
         """세션 ID로 세션을 조회합니다."""

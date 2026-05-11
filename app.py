@@ -49,7 +49,18 @@ async def lifespan(app: FastAPI):
     """앱 시작/종료 시 실행되는 lifespan 이벤트"""
     # Startup
     app.state.chatbot_manager = ChatbotManager()
-    app.state.session_manager = SessionManager()
+    
+    # SessionManager: PostgreSQL 연결 (USE_MOCK_DB=false 시)
+    pg_session_repo = None
+    if not settings.USE_MOCK_DB:
+        try:
+            from backend.repository.session_repository import PostgreSQLSessionRepository
+            pg_session_repo = PostgreSQLSessionRepository(settings.DATABASE_URL)
+            logger.info("PostgreSQL 세션 저장소 연결 완료")
+        except Exception as e:
+            logger.error("PostgreSQL 세션 저장소 연결 실패", extra={"error": str(e)})
+    
+    app.state.session_manager = SessionManager(pg_repo=pg_session_repo)
     app.state.memory_manager = MemoryManager()
     app.state.ingestion_client = IngestionClient()
     app.state.role_router = RoleRouter(app.state.ingestion_client)

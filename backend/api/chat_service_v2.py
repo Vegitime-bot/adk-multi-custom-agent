@@ -184,7 +184,9 @@ class ChatServiceV2:
         assistant_response: str,
         duration_ms: int
     ):
-        """대화 저장"""
+        """대화 저장: Memory + DB + MD 파일"""
+        from datetime import datetime
+        
         # 1. MemoryManager 업데이트 (에러 분리)
         try:
             if self.memory_manager:
@@ -201,7 +203,6 @@ class ChatServiceV2:
         # 2. ConversationRepository 저장 (에러 분리)
         try:
             if self.conversation_repo:
-                from datetime import datetime
                 log = ConversationLog(
                     id=0,  # DB에서 auto-increment
                     session_id=session_id,
@@ -222,6 +223,22 @@ class ChatServiceV2:
                 logger.warning(f"[ChatServiceV2] No conversation_repo configured, skipping DB save: {session_id}")
         except Exception as e:
             logger.error(f"[ChatServiceV2] DB save failed: {e}", exc_info=True)
+        
+        # 3. MD 파일 저장 — data/{chatbot_id}/{session_id}.md
+        try:
+            md_dir = Path(f"data/{chatbot_id}")
+            md_dir.mkdir(parents=True, exist_ok=True)
+            md_file = md_dir / f"{session_id}.md"
+            
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            md_entry = f"""\n---\n**Time**: {timestamp}\n**User**: {user_message}\n**Assistant**: {assistant_response}\n"""
+            
+            with open(md_file, "a", encoding="utf-8") as f:
+                f.write(md_entry)
+            
+            logger.info(f"[ChatServiceV2] MD saved: {md_file}")
+        except Exception as e:
+            logger.error(f"[ChatServiceV2] MD save failed: {e}", exc_info=True)
 
 
 # 전역 서비스 인스턴스

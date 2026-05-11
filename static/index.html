@@ -449,7 +449,7 @@
     console.log('[Debug] 히스토리 로드 시작:', sessionIdToLoad);
     
     try {
-      const res = await fetch(`${BASE}/api/sessions/${sessionIdToLoad}/messages?limit=30`);
+      const res = await fetch(`${BASE}/api/sessions/${sessionIdToLoad}/history`);
       console.log('[Debug] API 응답 상태:', res.status);
       
       if (!res.ok) {
