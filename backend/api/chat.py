@@ -224,10 +224,12 @@ def list_sessions(r: Request):
 
 @router.delete("/sessions/{sid}")
 def close_session(sid: str, r: Request):
-    """세션 종료"""
+    """세션 종료 — 메모리 + 세션 객체 모두 삭제"""
     auth.get_current_user(r)
     sm, mm = _d(r)[1], _d(r)[2]
     mm.clear_all_for_session(sid)
+    sm.close_session(sid)
+    return {"message": f"세션 {sid} 종료", "session_id": sid}
 
 
 # V2 Helper Functions
@@ -264,5 +266,3 @@ async def _chat_v2(b: ChatR, r: Request, u, cbm, sm, mm):
     except Exception as e:
         logger.error(f"[ChatV2] Error: {e}", exc_info=True)
         raise HTTPException(500, f"Chat service error: {str(e)}")
-    sm.close_session(sid)
-    return {"message": f"세션 {sid} 종료"}
