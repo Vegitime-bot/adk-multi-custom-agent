@@ -9,7 +9,7 @@ from typing import Optional
 from backend.api.utils import chat_utils as cu
 from backend.api.middleware import auth_middleware as auth
 from backend.api.chat_service_adk import get_adk_chat_service
-from backend.core.models import ExecutionRole
+from backend.core.models import ExecutionRole, Message
 from backend.debug_logger import logger
 
 # ChatServiceV2 import (JSON 기반 계층 구조)
