@@ -203,9 +203,22 @@ async def agent(cid: str, b: AgentR, r: Request):
 
 @router.get("/sessions/{sid}/history")
 def history(sid: str, chatbot_id: str, r: Request):
-    """세션 히스토리 조회"""
+    """세션 히스토리 조회 — Memory first, PostgreSQL fallback"""
     auth.get_current_user(r)
-    return [m.to_dict() for m in cu.get_memory_manager(r).get_history(chatbot_id, sid)]
+    mm = cu.get_memory_manager(r)
+    messages = mm.get_history(chatbot_id, sid)
+
+    # Memory에 없으면 PostgreSQL에서 fallback 조회
+    if not messages:
+        from backend.conversation.repository import get_conversation_repository
+        repo = get_conversation_repository()
+        logs = repo.get_by_session(sid, limit=100)
+
+        for log in logs:
+            messages.append(Message(role="user", content=log.user_message))
+            messages.append(Message(role="assistant", content=log.assistant_response))
+
+    return [m.to_dict() for m in messages]
 
 
 @router.get("/sessions")

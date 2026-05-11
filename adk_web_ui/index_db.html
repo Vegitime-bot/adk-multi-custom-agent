@@ -1889,7 +1889,7 @@
 
         async function loadSessionHistory(sessionId, page = 1) {
             try {
-                const data = await apiCall(`/api/session/${sessionId}/history?page=${page}`);
+                const data = await apiCall(`/api/sessions/${sessionId}/history?page=${page}`);
                 
                 const session = AppState.sessions.find(s => s.session_id === sessionId);
                 const title = session?.name || `세션 ${sessionId.slice(-6)}`;
@@ -2129,7 +2129,7 @@
 
         async function markMessagesRead(sessionId) {
             try {
-                await apiCall(`/api/session/${sessionId}/read`, {
+                await apiCall(`/api/sessions/${sessionId}/read`, {
                     method: 'POST',
                     body: JSON.stringify({})
                 });
@@ -2145,7 +2145,7 @@
             if (!AppState.currentSessionId) return;
             
             try {
-                const data = await apiCall(`/api/session/${AppState.currentSessionId}/unread`);
+                const data = await apiCall(`/api/sessions/${AppState.currentSessionId}/unread`);
                 if (data.unread_count > 0) {
                     AppState.unreadCounts[AppState.currentSessionId] = data.unread_count;
                     renderSessionsList();
@@ -2164,7 +2164,7 @@
             
             showLoading(true);
             try {
-                await apiCall('/api/session/reset', {
+                await apiCall('/api/sessions/reset', {
                     method: 'POST',
                     body: JSON.stringify({ session_id: AppState.currentSessionId })
                 });
@@ -2189,7 +2189,7 @@
             if (!confirm('이 세션을 삭제하시겠습니까?\n모든 메시지가 영구 삭제됩니다.')) return;
             
             try {
-                await apiCall(`/api/session/${sessionId}`, { method: 'DELETE' });
+                await apiCall(`/api/sessions/${sessionId}`, { method: 'DELETE' });
                 
                 if (AppState.currentSessionId === sessionId) {
                     closeChat();
@@ -2224,7 +2224,7 @@
             }
             
             try {
-                await apiCall('/api/session/rename', {
+                await apiCall('/api/sessions/rename', {
                     method: 'POST',
                     body: JSON.stringify({ session_id: sessionId, name: newName })
                 });
@@ -2270,7 +2270,7 @@
             }
             
             try {
-                const data = await apiCall(`/api/session/${AppState.currentSessionId}/messages/search`, {
+                const data = await apiCall(`/api/sessions/${AppState.currentSessionId}/messages/search`, {
                     method: 'POST',
                     body: JSON.stringify({ session_id: AppState.currentSessionId, query, limit: 20 })
                 });
