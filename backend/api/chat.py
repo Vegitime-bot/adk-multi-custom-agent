@@ -202,11 +202,16 @@ async def agent(cid: str, b: AgentR, r: Request):
 
 
 @router.get("/sessions/{sid}/history")
-def history(sid: str, chatbot_id: str, r: Request):
-    """세션 히스토리 조회 — Memory first, PostgreSQL fallback"""
-    auth.get_current_user(r)
-    mm = cu.get_memory_manager(r)
-    messages = mm.get_history(chatbot_id, sid)
+def history(sid: str, chatbot_id: Optional[str] = None, r: Optional[Request] = None):
+    """세션 히스토리 조회 - memory first, postgresql fallback """
+    if r:
+        auth.get_current_user(r)
+
+    # memory 조회, (chatbot_id 있을때만)
+    messages = []
+    if chatbot_id:
+        mm = cu.get_memory_manager(r)
+        messages = mm.get_history(chatbot_id, sid)
 
     # Memory에 없으면 PostgreSQL에서 fallback 조회
     if not messages:
