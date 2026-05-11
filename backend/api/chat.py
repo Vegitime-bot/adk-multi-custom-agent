@@ -202,7 +202,7 @@ async def agent(cid: str, b: AgentR, r: Request):
 
 
 @router.get("/sessions/{sid}/history")
-def history(sid: str, chatbot_id: Optional[str] = None, r: Optional[Request] = None):
+def history(sid: str, chatbot_id: Optional[str] = None, r: Request = None):
     """세션 히스토리 조회 - memory first, postgresql fallback """
     if r:
         auth.get_current_user(r)
