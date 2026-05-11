@@ -462,7 +462,7 @@
       const data = await res.json();
       console.log('[Debug] API 응답 데이터:', data);
       
-      const messages = data.messages || [];
+      const messages = data.history || [];
       console.log('[Debug] 메시지 개수:', messages.length);
       
       if (messages.length === 0) {

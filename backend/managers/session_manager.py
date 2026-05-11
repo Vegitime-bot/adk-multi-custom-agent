@@ -71,7 +71,11 @@ class SessionManager:
         # PostgreSQL에 세션 메타데이터 저장
         if self._pg_repo:
             try:
-                self._pg_repo.save(session)
+                self._pg_repo.create(
+                    user_id=user_knox_id,
+                    chatbot_id=chatbot_id,
+                    session_id=session.session_id
+                )
                 logger.info(f"[SessionManager] Session saved to PostgreSQL: {session.session_id}")
             except Exception as e:
                 logger.error(f"[SessionManager] Failed to save session to PostgreSQL: {e}")

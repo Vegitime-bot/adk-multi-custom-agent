@@ -224,9 +224,9 @@ class ChatServiceV2:
         except Exception as e:
             logger.error(f"[ChatServiceV2] DB save failed: {e}", exc_info=True)
         
-        # 3. MD 파일 저장 — data/{chatbot_id}/{session_id}.md
+        # 3. MD 파일 저장 — PROJECT_ROOT/data/{chatbot_id}/{session_id}.md
         try:
-            md_dir = Path(f"data/{chatbot_id}")
+            md_dir = PROJECT_ROOT / "data" / chatbot_id
             md_dir.mkdir(parents=True, exist_ok=True)
             md_file = md_dir / f"{session_id}.md"
             
