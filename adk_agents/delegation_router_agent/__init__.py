@@ -431,24 +431,16 @@ class DelegationRouter:
                                 function_response_detected = True
                                 function_response_content = part.function_response
                                 logger.info(f"[DelegationRouter] Tool response received")
-                                # function_response의 text 내용을 yield
+                                # function_response는 로그만 남기고 yield 안 함
+                                # LLM이 최종 답변에서만 text가 yield됨 (중복 방지)
                                 if hasattr(part, 'text') and part.text:
-                                    chunk = part.text
-                                    full_response.append(chunk)
-                                    text_chunks_count += 1
-                                    logger.info(f"[DelegationRouter] Yielding tool result text: {chunk[:50]}...")
-                                    yield self._sse_data(chunk)
-                                # function_response에 result가 있으면 직접 yield
+                                    logger.debug(f"[DelegationRouter] Tool result text (not yielded, will be in final answer): {part.text[:50]}...")
                                 elif hasattr(part.function_response, 'response') and part.function_response.response:
                                     try:
                                         result = part.function_response.response
                                         if isinstance(result, dict) and 'result' in result:
                                             result_text = result['result']
-                                            if result_text and isinstance(result_text, str) and len(result_text) > 0:
-                                                full_response.append(result_text)
-                                                text_chunks_count += 1
-                                                logger.info(f"[DelegationRouter] Yielding function response result: {result_text[:50]}...")
-                                                yield self._sse_data(result_text)
+                                            logger.debug(f"[DelegationRouter] Function response result (not yielded): {str(result_text)[:50]}...")
                                     except Exception as e:
                                         logger.debug(f"[DelegationRouter] Error extracting function response: {e}")
                             else:

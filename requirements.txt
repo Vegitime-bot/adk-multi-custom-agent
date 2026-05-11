@@ -17,6 +17,9 @@ litellm>=1.0.0  # ADK LiteLlm support
 # ── Google ADK ───────────────────────────────────────────────────
 google-adk
 
+# ── Event Loop ───────────────────────────────────────────────────
+nest_asyncio>=1.5.0  # nested event loop support for sub-agent invocation
+
 # ── ORM / DB ──────────────────────────────────────────────────────
 sqlalchemy==2.0.36
 psycopg2-binary==2.9.10

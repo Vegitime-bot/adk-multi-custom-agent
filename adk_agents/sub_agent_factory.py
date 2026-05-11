@@ -12,8 +12,11 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # 중첩 이벤트 루프 허용 (프로세스 레벨에서 한 번만)
-import nest_asyncio
-nest_asyncio.apply()
+try:
+    import nest_asyncio
+    nest_asyncio.apply()
+except ImportError:
+    pass  # 없으면 skip (서버 실행 시 별도 설치 권장)
 
 from backend.debug_logger import logger
 
