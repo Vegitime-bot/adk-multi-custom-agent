@@ -218,7 +218,7 @@ def history(sid: str, chatbot_id: str, r: Request):
             messages.append(Message(role="user", content=log.user_message))
             messages.append(Message(role="assistant", content=log.assistant_response))
 
-    return [m.to_dict() for m in messages]
+    return {"history": [m.to_dict() for m in messages]}
 
 
 @router.get("/sessions")

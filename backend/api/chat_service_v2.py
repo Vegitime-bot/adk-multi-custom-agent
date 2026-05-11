@@ -185,8 +185,8 @@ class ChatServiceV2:
         duration_ms: int
     ):
         """대화 저장"""
+        # 1. MemoryManager 업데이트 (에러 분리)
         try:
-            # MemoryManager 업데이트
             if self.memory_manager:
                 self.memory_manager.append_pair(
                     chatbot_id=chatbot_id,
@@ -194,8 +194,12 @@ class ChatServiceV2:
                     user_content=user_message,
                     assistant_content=assistant_response
                 )
-            
-            # ConversationRepository 저장
+                logger.debug(f"[ChatServiceV2] Memory updated: {session_id}")
+        except Exception as e:
+            logger.error(f"[ChatServiceV2] Memory update failed: {e}", exc_info=True)
+        
+        # 2. ConversationRepository 저장 (에러 분리)
+        try:
             if self.conversation_repo:
                 from datetime import datetime
                 log = ConversationLog(
@@ -212,12 +216,12 @@ class ChatServiceV2:
                     delegated_to=None,
                     created_at=datetime.now()
                 )
-                self.conversation_repo.save(log)
-            
-            logger.info(f"[ChatServiceV2] Conversation saved: {session_id}")
-            
+                result = self.conversation_repo.save(log)
+                logger.info(f"[ChatServiceV2] Conversation saved to DB: {session_id}, log_id={result.id}")
+            else:
+                logger.warning(f"[ChatServiceV2] No conversation_repo configured, skipping DB save: {session_id}")
         except Exception as e:
-            logger.error(f"[ChatServiceV2] Failed to save conversation: {e}")
+            logger.error(f"[ChatServiceV2] DB save failed: {e}", exc_info=True)
 
 
 # 전역 서비스 인스턴스
