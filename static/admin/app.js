@@ -60,6 +60,20 @@ async function loadCurrentUser() {
             if (addBtn && isAdmin) {
                 addBtn.classList.remove('hidden');
             }
+            
+            // 관리자 전용 메뉴 노출/숨김
+            const adminMenuItems = ['permissions', 'stats', 'settings'];
+            adminMenuItems.forEach(viewName => {
+                const navItem = document.querySelector(`.nav-item[data-view="${viewName}"]`);
+                if (navItem) {
+                    navItem.style.display = isAdmin ? 'flex' : 'none';
+                }
+            });
+            
+            // 관리자 전용 뷰가 아니면 기본 뷰(store)로 이동
+            if (!isAdmin && ['permissions', 'stats', 'settings'].includes(currentView)) {
+                switchView('store');
+            }
         }
     } catch (error) {
         console.error('Failed to load user info:', error);
@@ -214,6 +228,13 @@ setTimeout(setupAddChatbotListeners, 100);
 
 // ===== 뷰 전환 =====
 function switchView(viewName) {
+    // 관리자 전용 뷰 권한 체크
+    const adminViews = ['permissions', 'stats', 'settings'];
+    if (adminViews.includes(viewName) && !isAdmin) {
+        showToast('관리자 권한이 필요합니다.', 'error');
+        return;
+    }
+    
     currentView = viewName;
     
     // Update nav items - Tailwind 스타일
@@ -428,8 +449,25 @@ async function loadHierarchy() {
             return;
         }
         
-        // Build 3-tier hierarchy tree
-        const roots = bots.filter(b => !b.parent_id || b.level === 0);
+        // Build 3-tier hierarchy tree with computed levels
+        // Compute level for all bots based on parent_id chain
+        const levelMap = new Map();
+        function computeLevel(botId, bots) {
+            if (levelMap.has(botId)) return levelMap.get(botId);
+            const bot = bots.find(b => b.id === botId);
+            if (!bot) { levelMap.set(botId, 0); return 0; }
+            if (!bot.parent_id) { levelMap.set(botId, 0); return 0; }
+            const parentLevel = computeLevel(bot.parent_id, bots);
+            const lvl = parentLevel + 1;
+            levelMap.set(botId, lvl);
+            return lvl;
+        }
+        bots.forEach(b => computeLevel(b.id, bots));
+        
+        // Assign computed levels back
+        bots.forEach(b => { b.level = levelMap.get(b.id) || 0; });
+        
+        const roots = bots.filter(b => b.level === 0);
         
         const html = roots.map(root => renderHierarchyTree(root, bots, 0)).join('');
         
