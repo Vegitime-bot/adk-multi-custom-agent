@@ -126,7 +126,9 @@ async def list_agents():
                                 "name": chatbot_def.get('name', chatbot_id),
                                 "description": chatbot_def.get('description', ''),
                                 "tools": [t.name for t in getattr(agent, 'tools', [])],
-                                "has_sub_chatbots": bool(chatbot_def.get('sub_chatbots'))
+                                "has_sub_chatbots": bool(chatbot_def.get('sub_chatbots')),
+                                "parent_id": chatbot_def.get('parent_id'),
+                                "level": chatbot_def.get('level', 0),
                             })
                         except Exception as e:
                             logger.warning(f"[DebugAPI] Failed to create agent for {chatbot_id}: {e}")
