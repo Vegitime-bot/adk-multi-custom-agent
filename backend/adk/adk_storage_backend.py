@@ -95,6 +95,8 @@ class ADKSessionStorage(SessionStorageBackend):
             user_knox_id=state.get("user_knox_id", getattr(adk_session, 'user_id', '')),
             role_override=role_override,
             active_level=state.get("active_level", 1),
+            created_at=state.get("created_at", ""),
+            last_accessed=state.get("last_accessed", ""),
         )
     
     def _chat_to_adk_state(self, chat_session: ChatSession) -> dict[str, Any]:
@@ -106,7 +108,8 @@ class ADKSessionStorage(SessionStorageBackend):
                 k: v.value for k, v in chat_session.role_override.items()
             },
             "active_level": chat_session.active_level,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": chat_session.created_at,
+            "last_accessed": chat_session.last_accessed,
         }
     
     def create_session(
@@ -129,12 +132,15 @@ class ADKSessionStorage(SessionStorageBackend):
                 except ValueError:
                     overrides[bot_id] = ExecutionRole.AGENT
         
+        now = datetime.utcnow().isoformat()
         session = ChatSession(
             session_id=sid,
             chatbot_id=chatbot_id,
             user_knox_id=user_knox_id,
             role_override=overrides,
             active_level=active_level,
+            created_at=now,
+            last_accessed=now,
         )
         
         # ADK 세션 생성 (비동기 처리)

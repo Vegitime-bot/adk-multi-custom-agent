@@ -1,6 +1,8 @@
 """backend/api/chat.py - ADK 기반 채팅 API"""
 import time
 import os
+import re
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -11,6 +13,7 @@ from backend.api.middleware import auth_middleware as auth
 from backend.api.chat_service_adk import get_adk_chat_service
 from backend.core.models import ExecutionRole, Message
 from backend.debug_logger import logger
+from config import settings
 
 # ChatServiceV2 import (JSON 기반 계층 구조)
 USE_V2 = os.getenv("USE_CHAT_SERVICE_V2", "false").lower() == "true"
@@ -203,7 +206,7 @@ async def agent(cid: str, b: AgentR, r: Request):
 
 @router.get("/sessions/{sid}/history")
 def history(sid: str, chatbot_id: Optional[str] = None, r: Request = None):
-    """세션 히스토리 조회 - memory first, postgresql fallback """
+    """세션 히스토리 조회 - memory first, postgresql fallback, md file reference support"""
     if r:
         auth.get_current_user(r)
 
@@ -220,10 +223,66 @@ def history(sid: str, chatbot_id: Optional[str] = None, r: Request = None):
         logs = repo.get_by_session(sid, limit=100)
 
         for log in logs:
-            messages.append(Message(role="user", content=log.user_message))
-            messages.append(Message(role="assistant", content=log.assistant_response))
+            user_msg = log.user_message
+            assistant_msg = log.assistant_response
+
+            # assistant_response가 MD 파일 경로인지 확인 (.md 확장자 + 실제 존재 여부)
+            if isinstance(assistant_msg, str) and assistant_msg.endswith(".md"):
+                md_path = Path(assistant_msg)
+                # path traversal 방지: 설정된 base dir 하위만 허용
+                base_dir = settings.CHAT_HISTORY_DIR.resolve()
+                try:
+                    md_path_resolved = md_path.resolve()
+                    if str(md_path_resolved).startswith(str(base_dir)) and md_path.exists():
+                        md_messages = _parse_md_to_messages(md_path)
+                        messages.extend(md_messages)
+                        continue
+                    else:
+                        logger.warning(f"[history] MD path outside base_dir or not found: {md_path}")
+                except (OSError, RuntimeError) as e:
+                    logger.error(f"[history] MD path resolution failed: {e}")
+                    # fallback: DB 값 그대로 사용
+
+            # 일반적인 텍스트 응답 (기존 동작)
+            messages.append(Message(role="user", content=user_msg))
+            messages.append(Message(role="assistant", content=assistant_msg))
 
     return {"history": [m.to_dict() for m in messages]}
+
+
+def _parse_md_to_messages(md_path: Path) -> list[Message]:
+    """MD 파일을 User/Assistant 블록으로 파싱하여 Message 리스트 반환"""
+    messages = []
+    try:
+        with open(md_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        logger.error(f"[_parse_md_to_messages] Read failed: {md_path}, error: {e}")
+        return messages
+
+    # --- 구분자로 블록 분리 ---
+    # 패턴: \n---\n (SSE 방식: ---는 블록 시작/종료)
+    blocks = re.split(r'\n---+\n', content)
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+
+        # User / Assistant 라인 파싱
+        user_match = re.search(r'\*\*User\*\*\s*:\s*(.+?)(?=\n\*\*Assistant|$)', block, re.DOTALL)
+        assistant_match = re.search(r'\*\*Assistant\*\*\s*:\s*(.+)', block, re.DOTALL)
+
+        if user_match:
+            user_content = user_match.group(1).strip()
+            if user_content:
+                messages.append(Message(role="user", content=user_content))
+
+        if assistant_match:
+            assistant_content = assistant_match.group(1).strip()
+            if assistant_content:
+                messages.append(Message(role="assistant", content=assistant_content))
+
+    return messages
 
 
 @router.get("/sessions")
@@ -234,7 +293,7 @@ def list_sessions(r: Request):
     ss = sm.list_sessions(user_knox_id=u["knox_id"])  # ✅ 사용자별 필터링
     return {
         "sessions": [
-            {"session_id": s.get("session_id"), "chatbot_id": s.get("chatbot_id")}
+            {"session_id": s.get("session_id"), "chatbot_id": s.get("chatbot_id"), "last_accessed": s.get("last_accessed")}
             for s in ss
         ]
     }

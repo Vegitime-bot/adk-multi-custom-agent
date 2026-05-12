@@ -184,9 +184,15 @@ class ChatServiceV2:
         assistant_response: str,
         duration_ms: int
     ):
-        """대화 저장: Memory + DB + MD 파일"""
+        """대화 저장: Memory + DB(MD 경로 참조) + MD 파일"""
         from datetime import datetime
-        
+        from config import settings
+
+        # MD 파일 경로 (설정값 기반)
+        md_dir = settings.CHAT_HISTORY_DIR / chatbot_id
+        md_file = md_dir / f"{session_id}.md"
+        md_path_str = str(md_file)
+
         # 1. MemoryManager 업데이트 (에러 분리)
         try:
             if self.memory_manager:
@@ -199,17 +205,17 @@ class ChatServiceV2:
                 logger.debug(f"[ChatServiceV2] Memory updated: {session_id}")
         except Exception as e:
             logger.error(f"[ChatServiceV2] Memory update failed: {e}", exc_info=True)
-        
-        # 2. ConversationRepository 저장 (에러 분리)
+
+        # 2. ConversationRepository 저장 — assistant_response에 MD 파일 경로 저장
         try:
             if self.conversation_repo:
                 log = ConversationLog(
-                    id=0,  # DB에서 auto-increment
+                    id=0,
                     session_id=session_id,
                     knox_id=user_id,
                     chatbot_id=chatbot_id,
                     user_message=user_message,
-                    assistant_response=assistant_response,
+                    assistant_response=md_path_str,
                     tokens_used=len(user_message) + len(assistant_response),
                     latency_ms=duration_ms,
                     search_results_count=0,
@@ -223,19 +229,16 @@ class ChatServiceV2:
                 logger.warning(f"[ChatServiceV2] No conversation_repo configured, skipping DB save: {session_id}")
         except Exception as e:
             logger.error(f"[ChatServiceV2] DB save failed: {e}", exc_info=True)
-        
-        # 3. MD 파일 저장 — PROJECT_ROOT/data/{chatbot_id}/{session_id}.md
+
+        # 3. MD 파일 저장 — 설정값 기반 경로 사용
         try:
-            md_dir = PROJECT_ROOT / "data" / chatbot_id
             md_dir.mkdir(parents=True, exist_ok=True)
-            md_file = md_dir / f"{session_id}.md"
-            
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             md_entry = f"""\n---\n**Time**: {timestamp}\n**User**: {user_message}\n**Assistant**: {assistant_response}\n"""
-            
+
             with open(md_file, "a", encoding="utf-8") as f:
                 f.write(md_entry)
-            
+
             logger.info(f"[ChatServiceV2] MD saved: {md_file}")
         except Exception as e:
             logger.error(f"[ChatServiceV2] MD save failed: {e}", exc_info=True)

@@ -43,6 +43,7 @@ except ImportError:
         USE_ADK: bool = os.getenv("USE_ADK", "false").lower() == "true"
         ADK_VERSION: str = "1.31.1"
         CHATBOTS_DIR: Path = Path(__file__).parent.parent / "chatbots"
+        CHAT_HISTORY_DIR: Path = Path(os.getenv("CHAT_HISTORY_DIR", str(PROJECT_ROOT / "data")))
         HOST: str = os.getenv("HOST", "0.0.0.0")
         PORT: int = int(os.getenv("PORT", "8080"))
         DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"

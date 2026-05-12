@@ -64,6 +64,10 @@ class Settings:
     # ── 챗봇 정의 경로 ────────────────────────────────────────────
     CHATBOTS_DIR: Path = PROJECT_ROOT / "chatbots"
 
+    # ── 채팅 히스토리 저장 경로 ───────────────────────────────────
+    # MD 파일 저장 경로 (DB 대신 참조용으로 저장)
+    CHAT_HISTORY_DIR: Path = Path(os.getenv("CHAT_HISTORY_DIR", str(PROJECT_ROOT / "data")))
+
     # ── 서버 ─────────────────────────────────────────────────────
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8080"))
