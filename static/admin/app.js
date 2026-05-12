@@ -449,23 +449,18 @@ async function loadHierarchy() {
             return;
         }
         
-        // Build 3-tier hierarchy tree with computed levels
-        // Compute level for all bots based on parent_id chain
-        const levelMap = new Map();
-        function computeLevel(botId, bots) {
-            if (levelMap.has(botId)) return levelMap.get(botId);
-            const bot = bots.find(b => b.id === botId);
-            if (!bot) { levelMap.set(botId, 0); return 0; }
-            if (!bot.parent_id) { levelMap.set(botId, 0); return 0; }
-            const parentLevel = computeLevel(bot.parent_id, bots);
-            const lvl = parentLevel + 1;
-            levelMap.set(botId, lvl);
-            return lvl;
-        }
-        bots.forEach(b => computeLevel(b.id, bots));
-        
-        // Assign computed levels back
-        bots.forEach(b => { b.level = levelMap.get(b.id) || 0; });
+        // Ensure level is set (fallback for APIs that don't include level)
+        bots.forEach(b => {
+            if (b.level === undefined) {
+                if (b.parent_id) {
+                    const parent = bots.find(pb => pb.id === b.parent_id);
+                    b.level = parent && parent.level !== undefined ? parent.level + 1 : 1;
+                } else {
+                    b.level = 0;
+                }
+            }
+        });
+        console.log('[Hierarchy] Bots with levels:', bots.map(b => ({ id: b.id, level: b.level, parent_id: b.parent_id })));
         
         const roots = bots.filter(b => b.level === 0);
         
