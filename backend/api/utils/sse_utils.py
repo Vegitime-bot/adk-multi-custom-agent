@@ -7,7 +7,7 @@ import json
 from typing import AsyncGenerator
 
 
-def sse_event(data: str, event: str = "message") -> str:
+def sse_event(data, event: str = "message") -> str:
     """SSE 이벤트 형식으로 데이터 포맷팅"""
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -30,6 +30,6 @@ async def sse_event_generator(
     기본적인 SSE 이벤트 생성기
     세션 ID 전송 후 메시지 스트리밍
     """
-    yield sse_event(json.dumps({"session_id": session_id}), event="session")
+    yield sse_event({"session_id": session_id}, event="session")
     yield sse_event(message)
     yield sse_done()
