@@ -7,7 +7,7 @@ ADK InMemorySessionService를 사용하여 세션을 관리합니다.
 import logging
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Query, HTTPException, Request
+from fastapi import APIRouter, Query, HTTPException, Request, Depends
 from pydantic import BaseModel
 
 from backend.adk.adk_session_wrapper import get_session_wrapper
@@ -83,17 +83,43 @@ async def create_session(request: SessionCreateRequest):
     )
 
 
+def _get_current_user_id(request: Request) -> str:
+    """Request에서 사용자 ID 추출 (Session 쿠키 → 헤더 → 쿼리 fallback)"""
+    # 1. SessionMiddleware 쿠키
+    user = request.session.get("user_id")
+    if user:
+        return user
+    # 2. Authorization 헤더
+    auth = request.headers.get("x-user-id") or request.headers.get("x-knox-id")
+    if auth:
+        return auth
+    # 3. Mock Auth fallback (개발환경)
+    from config import settings
+    if settings.USE_MOCK_AUTH:
+        return "mock-user"
+    return ""
+
+
 @router.get("/sessions", response_model=SessionListResponse)
 async def list_sessions(
-    user_id: str,
+    request: Request,
+    user_id: Optional[str] = Query(default=None),
     limit: int = Query(default=30, ge=1, le=100),
     offset: int = Query(default=0, ge=0)
 ):
-    """ADK 사용자별 세션 목록 조회"""
+    """ADK 사용자별 세션 목록 조회 (인증 쿠키 우선, 쿼리 fallback)"""
+    # 인증 쿠키에서 user_id 추출 (쿼리 파라미터 fallback)
+    effective_user_id = _get_current_user_id(request) or user_id or ""
+    
+    logger.info("[sessions] user=%s query_user_id=%s limit=%s", effective_user_id, user_id, limit)
+    
     wrapper = get_session_wrapper()
     
-    # ADK에서 세션 목록 조회
-    all_sessions = wrapper.list_sessions(user_knox_id=user_id)
+    # user_id가 없으면 전체 세션 반환 (Mock 환경용)
+    if not effective_user_id:
+        all_sessions = wrapper.list_sessions(user_knox_id=None)
+    else:
+        all_sessions = wrapper.list_sessions(user_knox_id=effective_user_id)
     
     # 페이징 처리
     total = len(all_sessions)
@@ -103,13 +129,15 @@ async def list_sessions(
     for s in paginated:
         sessions.append(SessionResponse(
             session_id=s.get("session_id", ""),
-            user_id=s.get("user_knox_id", user_id),
+            user_id=s.get("user_knox_id", effective_user_id),
             chatbot_id=s.get("chatbot_id", ""),
             created_at=s.get("created_at", ""),
             updated_at=datetime.utcnow().isoformat(),
             last_accessed=datetime.utcnow().isoformat(),
             message_count=0  # ADK는 메시지 카운트 별도 관리
         ))
+    
+    logger.info("[sessions] user=%s count=%s returned=%s", effective_user_id, total, len(sessions))
     
     return SessionListResponse(
         sessions=sessions,
