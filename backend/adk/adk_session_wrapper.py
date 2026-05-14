@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 USE_ADK = os.environ.get("USE_ADK", "false").lower() == "true"
 
 
-@dataclass
 class ADKSessionWrapper:
     """
     ADK Session을 기존 SessionManager 인터페이스와 호환되게 래핑하는 클래스.
@@ -128,46 +127,54 @@ class ADKSessionWrapper:
         session_id: Optional[str] = None,
     ) -> ChatSession:
         """ADK 기반 get_or_create 구현."""
-        
-        # 1. 명시적 session_id로 조회
-        if session_id:
-            adk_session = self._session_service.get_session(
+        try:
+            # 1. 명시적 session_id로 조회
+            if session_id:
+                adk_session = self._session_service.get_session(
+                    app_name="multi_custom_agent",
+                    user_id=user_knox_id,
+                    session_id=session_id,
+                )
+                if adk_session:
+                    logger.info(f"[ADKSessionWrapper] Found existing session: {session_id}")
+                    return self._adk_to_chat_session(adk_session)
+            
+            # 2. 동일 user + chatbot의 최근 세션 찾기
+            recent_session = self._find_recent_session(user_knox_id, chatbot_id)
+            if recent_session:
+                logger.info(
+                    f"[ADKSessionWrapper] Reusing recent session: {recent_session.session_id} "
+                    f"for {user_knox_id}/{chatbot_id}"
+                )
+                return recent_session
+            
+            # 3. 새 ADK 세션 생성
+            new_session_id = session_id or str(uuid.uuid4())
+            state = {
+                "chatbot_id": chatbot_id,
+                "user_knox_id": user_knox_id,
+                "role_override": {},
+                "active_level": 1,
+                "created_at": datetime.utcnow().isoformat(),
+            }
+            
+            logger.info(f"[ADKSessionWrapper] Creating ADK session: {new_session_id}")
+            adk_session = self._session_service.create_session_sync(
                 app_name="multi_custom_agent",
                 user_id=user_knox_id,
-                session_id=session_id,
+                session_id=new_session_id,
+                state=state,
             )
-            if adk_session:
-                logger.info(f"[ADKSessionWrapper] Found existing session: {session_id}")
-                return self._adk_to_chat_session(adk_session)
-        
-        # 2. 동일 user + chatbot의 최근 세션 찾기
-        recent_session = self._find_recent_session(user_knox_id, chatbot_id)
-        if recent_session:
-            logger.info(
-                f"[ADKSessionWrapper] Reusing recent session: {recent_session.session_id} "
-                f"for {user_knox_id}/{chatbot_id}"
-            )
-            return recent_session
-        
-        # 3. 새 ADK 세션 생성
-        new_session_id = session_id or str(uuid.uuid4())
-        state = {
-            "chatbot_id": chatbot_id,
-            "user_knox_id": user_knox_id,
-            "role_override": {},
-            "active_level": 1,
-            "created_at": datetime.utcnow().isoformat(),
-        }
-        
-        adk_session = self._session_service.create_session(
-            app_name="multi_custom_agent",
-            user_id=user_knox_id,
-            session_id=new_session_id,
-            state=state,
-        )
-        
-        logger.info(f"[ADKSessionWrapper] Created new ADK session: {new_session_id}")
-        return self._adk_to_chat_session(adk_session)
+            
+            logger.info(f"[ADKSessionWrapper] ADK session created, type={type(adk_session)}, id={getattr(adk_session, 'id', 'N/A')}")
+            chat_session = self._adk_to_chat_session(adk_session)
+            # 로컬 캐시에 저장 (list_sessions에서 조회 가능하도록)
+            self._local_sessions[new_session_id] = chat_session
+            logger.info(f"[ADKSessionWrapper] Saved to local cache: {new_session_id}, total={len(self._local_sessions)}")
+            return chat_session
+        except Exception as e:
+            logger.error(f"[ADKSessionWrapper] _adk_get_or_create ERROR: {type(e).__name__}: {e}")
+            raise
     
     def _adk_get_session(self, session_id: str) -> Optional[ChatSession]:
         """ADK 기반 세션 조회."""
@@ -241,34 +248,28 @@ class ADKSessionWrapper:
         user_knox_id: str,
         chatbot_id: str,
     ) -> Optional[ChatSession]:
-        """ADK 기반 최근 세션 찾기."""
-        # 사용자별 세션 목록 가져오기
-        try:
-            sessions = self._session_service.list_sessions(
-                app_name="multi_custom_agent",
-                user_id=user_knox_id,
-            )
-        except Exception:
-            # list_sessions 미지원 시 내부 _sessions 속성 사용
-            sessions = [
-                s for s in getattr(self._session_service, '_sessions', {}).values()
-                if s.user_id == user_knox_id
-            ]
-        
-        matching = []
-        for session in sessions:
-            state = session.state or {}
-            if state.get("chatbot_id") == chatbot_id:
-                matching.append(session)
-        
+        """ADK 기반 최근 세션 찾기. _local_sessions를 primary로 사용."""
+        # 먼저 로컬 캐시에서 검색 (ADK async 호출 문제 회피)
+        matching = [
+            s for s in self._local_sessions.values()
+            if s.user_knox_id == user_knox_id and s.chatbot_id == chatbot_id
+        ]
         if matching:
-            # created_at 기준으로 정렬 (없으면 events 기반)
-            def get_time(s):
-                created = s.state.get("created_at", "")
-                return created if created else ""
-            
-            matching.sort(key=get_time, reverse=True)
-            return self._adk_to_chat_session(matching[0])
+            # 생성 시간 기준으로 정렬하여 가장 최근 것 반환
+            matching.sort(key=lambda s: s.created_at, reverse=True)
+            logger.info(f"[ADKSessionWrapper] _adk_find_recent_session: found {len(matching)} in local cache")
+            return matching[0]
+        
+        # 로컬에 없으면 ADK 시도 (fallback)
+        try:
+            # ADK list_sessions는 async coroutine이므로 sync 함수에서 직접 호출하면 RuntimeWarning
+            # asyncio.run()은 이미 실행 중인 event loop가 있으면 불가
+            # 일단 로컬 캐시 우선 정책으로 처리
+            logger.info(f"[ADKSessionWrapper] _adk_find_recent_session: not found in local cache, returning None")
+        except Exception as e:
+            logger.warning(f"[ADKSessionWrapper] _adk_find_recent_session error: {e}")
+        
+        return None
         
         return None
     
@@ -295,7 +296,7 @@ class ADKSessionWrapper:
                     role_override[bot_id] = ExecutionRole.AGENT
         
         return ChatSession(
-            session_id=adk_session.session_id,
+            session_id=adk_session.id,
             chatbot_id=state.get("chatbot_id", ""),
             user_knox_id=state.get("user_knox_id", adk_session.user_id),
             role_override=role_override,
@@ -441,6 +442,9 @@ class ADKSessionWrapper:
         """
         동일 user + chatbot의 가장 최근 세션 찾기.
         
+        ADK list_sessions는 async coroutine이므로 sync 함수에서는 호출할 수 없습니다.
+        _local_sessions 캐시에서만 검색합니다.
+        
         Args:
             user_knox_id: 사용자 Knox ID
             chatbot_id: 챗봇 ID
@@ -448,31 +452,7 @@ class ADKSessionWrapper:
         Returns:
             가장 최근 ChatSession 또는 None
         """
-        if USE_ADK and ADK_AVAILABLE and self._session_service:
-            try:
-                # ADK에서 세션 목록 조회
-                all_sessions = self._session_service.list_sessions(
-                    app_name="multi_custom_agent",
-                    user_id=user_knox_id,
-                )
-                
-                # chatbot_id가 일치하는 세션 찾기
-                matching = []
-                for s in all_sessions:
-                    if s.state and s.state.get("chatbot_id") == chatbot_id:
-                        matching.append(s)
-                
-                if matching:
-                    # 생성 시간 기준으로 정렬하여 가장 최근 것 반환
-                    # ADK Session에는 create_time 속성이 있음
-                    matching.sort(key=lambda s: getattr(s, 'create_time', ''), reverse=True)
-                    return self._adk_to_chat_session(matching[0])
-                    
-            except Exception as e:
-                logger.warning(f"[ADKSessionWrapper] find_recent_session error: {e}")
-                pass
-        
-        # Fallback: 로컬 세션에서 검색
+        # _local_sessions 캐시에서만 검색 (ADK sync 호출 불가)
         matching = [
             s for s in self._local_sessions.values()
             if s.user_knox_id == user_knox_id and s.chatbot_id == chatbot_id
@@ -481,36 +461,52 @@ class ADKSessionWrapper:
             return matching[-1]
         return None
 
-    def list_sessions(self, user_knox_id: Optional[str] = None) -> list[dict]:
+    async def list_sessions(self, user_knox_id: Optional[str] = None) -> list[dict]:
         """
         세션 목록 조회 (SessionManager 인터페이스 호환).
-        
+
+        ADK list_sessions는 async coroutine이므로 await가 필요합니다.
+        create_session에서 await 없이 호출되면 ADK에 저장되지 않으므로
+        _local_sessions 캐시를 primary source로, ADK를 secondary로 사용합니다.
+
         Args:
             user_knox_id: 사용자 Knox ID (선택, 없으면 전체)
-            
+
         Returns:
             세션 dict 목록
         """
+        # 먼저 local 캐시에서 조회 (create_session은 sync로 _local_sessions에 저장)
+        local_sessions = list(self._local_sessions.values())
+        if user_knox_id:
+            local_sessions = [s for s in local_sessions if s.user_knox_id == user_knox_id]
+        
+        local_count = len(local_sessions)
+        logger.info(f"[ADKSessionWrapper] list_sessions: local cache has {local_count} sessions")
+        
+        # ADK 세션 서비스가 있으면 추가 조회 (병합)
+        adk_sessions = []
         if USE_ADK and ADK_AVAILABLE and self._session_service:
             try:
-                all_sessions = self._session_service.list_sessions(
+                # ADK list_sessions는 async coroutine → 반드시 await
+                all_sessions = await self._session_service.list_sessions(
                     app_name="multi_custom_agent",
                     user_id=user_knox_id or "*",
                 )
-                return [self._adk_to_chat_session(s).to_dict() for s in all_sessions]
-            except Exception:
-                # list_sessions 미지원 시 내부 순회
-                sessions = getattr(self._session_service, '_sessions', {})
-                result = []
-                for key, s in sessions.items():
-                    if user_knox_id is None or s.user_id == user_knox_id:
-                        result.append(self._adk_to_chat_session(s).to_dict())
-                return result
-        else:
-            sessions = self._local_sessions.values()
-            if user_knox_id:
-                sessions = [s for s in sessions if s.user_knox_id == user_knox_id]
-            return [s.to_dict() for s in sessions]
+                adk_sessions = [self._adk_to_chat_session(s) for s in all_sessions]
+                logger.info(f"[ADKSessionWrapper] list_sessions: ADK returned {len(adk_sessions)} sessions")
+            except Exception as e:
+                logger.warning(f"[ADKSessionWrapper] ADK list_sessions error: {e}")
+        
+        # ADK 결과를 local 캐시에 동기화
+        for adk_session in adk_sessions:
+            if adk_session.session_id not in self._local_sessions:
+                self._local_sessions[adk_session.session_id] = adk_session
+                local_count += 1
+        
+        # 최종 결과: local 캐시 기준 (ADK sync 문제로 인해 local이 더 신뢰할 수 있음)
+        result = [s.to_dict() for s in local_sessions]
+        logger.info(f"[ADKSessionWrapper] list_sessions: returning {len(result)} sessions (local={local_count}, adk={len(adk_sessions)})")
+        return result
 
 
 # ─────────────────────────────────────────────────────────────────

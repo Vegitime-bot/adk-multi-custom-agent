@@ -1,8 +1,7 @@
 """
-backend/api/sessions.py - ADK 기반 세션 관리 API
+backend/api/sessions.py - 세션 관리 API
 
-ADK InMemorySessionService를 사용하여 세션을 관리합니다.
-기존 MockRepository 기반에서 ADK로 완전히 대체됩니다.
+SessionManager를 통해 ADK 세션을 관리합니다.
 """
 import logging
 from typing import List, Optional
@@ -10,10 +9,13 @@ from datetime import datetime
 from fastapi import APIRouter, Query, HTTPException, Request, Depends
 from pydantic import BaseModel
 
-from backend.adk.adk_session_wrapper import get_session_wrapper
-
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["sessions"])
+
+
+def _get_session_manager(request: Request):
+    """Request의 app.state에서 SessionManager 가져오기"""
+    return request.app.state.session_manager
 
 
 # ── 스키마 ───────────────────────────────────────────────────────
@@ -60,15 +62,14 @@ class MessageListResponse(BaseModel):
 
 # ── API 엔드포인트 ────────────────────────────────────────────────
 @router.post("/sessions", response_model=SessionResponse)
-async def create_session(request: SessionCreateRequest):
+async def create_session(request: SessionCreateRequest, req: Request):
     """새 ADK 세션 생성"""
-    wrapper = get_session_wrapper()
+    sm = _get_session_manager(req)
     
-    # ADK 세션 생성
-    session = wrapper.get_or_create(
+    session = sm.create_session(
         chatbot_id=request.chatbot_id,
         user_knox_id=request.user_id,
-        session_id=request.session_id
+        session_id=request.session_id,
     )
     
     now = datetime.utcnow().isoformat()
@@ -107,19 +108,11 @@ async def list_sessions(
     limit: int = Query(default=30, ge=1, le=100),
     offset: int = Query(default=0, ge=0)
 ):
-    """ADK 사용자별 세션 목록 조회 (인증 쿠키 우선, 쿼리 fallback)"""
-    # 인증 쿠키에서 user_id 추출 (쿼리 파라미터 fallback)
-    effective_user_id = _get_current_user_id(request) or user_id or ""
+    """사용자별 세션 목록 조회"""
+    effective_user_id = user_id or _get_current_user_id(request) or ""
     
-    logger.info("[sessions] user=%s query_user_id=%s limit=%s", effective_user_id, user_id, limit)
-    
-    wrapper = get_session_wrapper()
-    
-    # user_id가 없으면 전체 세션 반환 (Mock 환경용)
-    if not effective_user_id:
-        all_sessions = wrapper.list_sessions(user_knox_id=None)
-    else:
-        all_sessions = wrapper.list_sessions(user_knox_id=effective_user_id)
+    sm = _get_session_manager(request)
+    all_sessions = sm.list_sessions(user_knox_id=effective_user_id)
     
     # 페이징 처리
     total = len(all_sessions)
@@ -134,10 +127,8 @@ async def list_sessions(
             created_at=s.get("created_at", ""),
             updated_at=datetime.utcnow().isoformat(),
             last_accessed=datetime.utcnow().isoformat(),
-            message_count=0  # ADK는 메시지 카운트 별도 관리
+            message_count=0
         ))
-    
-    logger.info("[sessions] user=%s count=%s returned=%s", effective_user_id, total, len(sessions))
     
     return SessionListResponse(
         sessions=sessions,
@@ -148,11 +139,10 @@ async def list_sessions(
 
 
 @router.get("/sessions/{session_id}", response_model=SessionResponse)
-async def get_session(session_id: str):
-    """ADK 세션 상세 조회"""
-    wrapper = get_session_wrapper()
-    
-    session = wrapper.get_session(session_id)
+async def get_session(session_id: str, req: Request):
+    """세션 상세 조회"""
+    sm = _get_session_manager(req)
+    session = sm.get_session(session_id)
     
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -170,17 +160,15 @@ async def get_session(session_id: str):
 
 
 @router.delete("/sessions/{session_id}")
-async def delete_session(session_id: str):
-    """ADK 세션 삭제"""
-    wrapper = get_session_wrapper()
+async def delete_session(session_id: str, req: Request):
+    """세션 삭제"""
+    sm = _get_session_manager(req)
     
-    # 세션 존재 확인
-    session = wrapper.get_session(session_id)
+    session = sm.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # ADK 세션 종료
-    success = wrapper.close_session(session_id)
+    success = sm.close_session(session_id)
     
     return {
         "status": "success" if success else "error",
