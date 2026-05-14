@@ -129,6 +129,10 @@ class MockPermissionRepository(PermissionRepository):
     def _init_mock_data(self):
         """초기 Mock 데이터 로드"""
         mock_data = [
+            # jyd1234: 실제 사용자 (기본 권한 없음 - restricted 챗봇은 별도 부여 필요)
+            ("jyd1234", "chatbot-a", True),
+            ("jyd1234", "chatbot-b", True),
+            ("jyd1234", "chatbot-c", True),
             # user-001: 관리자 (전체 접근)
             ("user-001", "chatbot-a", True),
             ("user-001", "chatbot-b", True),
@@ -362,6 +366,9 @@ class PGPermissionRepository(PermissionRepository):
         return [r.to_dict() for r in rows]
 
 
+# ── Singleton 인스턴스 ─────────────────────────────────────────────
+_mock_instance: Optional[MockPermissionRepository] = None
+
 # ── 팩토리 함수 ────────────────────────────────────────────────────
 def get_permission_repository(
     use_mock: bool = True,
@@ -369,9 +376,13 @@ def get_permission_repository(
 ) -> PermissionRepository:
     """
     설정에 따라 적절한 Repository 반환
+    Mock 모드: 싱글톤 인스턴스 반환 (권한 데이터 공유)
     """
+    global _mock_instance
     if use_mock:
-        return MockPermissionRepository()
+        if _mock_instance is None:
+            _mock_instance = MockPermissionRepository()
+        return _mock_instance
     # 실제 DB 사용 시 session 필수
     if session is None:
         from backend.database.session import SessionLocal

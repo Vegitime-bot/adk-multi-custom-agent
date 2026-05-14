@@ -107,10 +107,16 @@ def load_restricted_chatbots() -> set[str]:
     """파일에서 제한된 챗봇 목록 로드"""
     import json
     from pathlib import Path
-    file_path = Path(__file__).parent.parent.parent / "data" / "restricted_chatbots.json"
+    # auth_middleware.py 위치: backend/api/middleware/
+    # 프로젝트 루트로 이동: backend/api/middleware → backend/api → backend → project_root
+    file_path = Path(__file__).parent.parent.parent.parent / "data" / "restricted_chatbots.json"
+    logger.info(f"[load_restricted_chatbots] 경로: {file_path}")
     if file_path.exists():
         data = json.loads(file_path.read_text())
-        return set(data.get("chatbots", []))
+        chatbots = set(data.get("chatbots", []))
+        logger.info(f"[load_restricted_chatbots] {len(chatbots)}개 챗봇 로드: {chatbots}")
+        return chatbots
+    logger.warning(f"[load_restricted_chatbots] 파일 없음: {file_path}")
     return set()
 
 
@@ -134,49 +140,46 @@ def get_user_permissions(user: dict) -> dict:
                     "allowed_modes": ["tool", "agent"]
                 }
         if result:
+            logger.info(f"[get_user_permissions] {knox_id}: {len(result)}개 권한 로드")
             return result
     except Exception as e:
         logger.warning(f"[get_user_permissions] DB 조회 실패: {e}")
 
+    # Fallback: Mock 데이터
+    logger.info(f"[get_user_permissions] {knox_id}: Mock 데이터 사용")
     return MOCK_USER_PERMISSIONS.get("user-001", {})
 
 
 def check_chatbot_access(permissions: dict, chatbot_id: str) -> bool:
-    """챗봇 접근 권한 확인 - 기본 허용, 특정 챗봇만 체크"""
+    """챗봇 접근 권한 확인"""
+    # test- 접두사 챗봇은 항상 허용
     if chatbot_id.startswith("test-"):
         return True
 
-    if settings.USE_MOCK_AUTH:
-        return True
-
+    # Restricted 목록이 비어있으면 모든 챗봇 허용
     if not RESTRICTED_CHATBOTS:
-        logger.debug(f"[check_chatbot_access] RESTRICTED_CHATBOTS 비어있음 → {chatbot_id} 허용")
         return True
 
+    # 제한 목록에 없는 챗봇은 누구나 접근 가능
     if chatbot_id not in RESTRICTED_CHATBOTS:
-        logger.debug(f"[check_chatbot_access] {chatbot_id}는 제한 목록에 없음 → 허용")
         return True
 
+    # 제한된 챗봇: 명시적 권한 필요
     bot_perm = permissions.get(chatbot_id, {})
     can_access = bot_perm.get("access", False)
-    logger.info(f"[check_chatbot_access] {chatbot_id}는 제한된 챗봇 → 권한: {can_access}")
+    logger.info(f"[check_chatbot_access] {chatbot_id} 제한됨 → 권한: {can_access}")
     return can_access
 
 
 def check_mode_permission(permissions: dict, chatbot_id: str, mode: str) -> bool:
-    """특정 mode 사용 권한 확인 - 기본 허용, 제한된 챗봇만 체크"""
+    """특정 mode 사용 권한 확인"""
     if chatbot_id.startswith("test-"):
         return True
 
-    if settings.USE_MOCK_AUTH:
-        return True
-
     if not RESTRICTED_CHATBOTS:
-        logger.debug(f"[check_mode_permission] RESTRICTED_CHATBOTS 비어있음 → {chatbot_id}/{mode} 허용")
         return True
 
     if chatbot_id not in RESTRICTED_CHATBOTS:
-        logger.debug(f"[check_mode_permission] {chatbot_id}는 제한 목록에 없음 → {mode} 허용")
         return True
 
     bot_perm = permissions.get(chatbot_id, {})
@@ -186,7 +189,7 @@ def check_mode_permission(permissions: dict, chatbot_id: str, mode: str) -> bool
 
     allowed = bot_perm.get("allowed_modes", [])
     has_permission = mode in allowed
-    logger.info(f"[check_mode_permission] {chatbot_id}는 제한된 챗봇 → {mode} 권한: {has_permission}")
+    logger.info(f"[check_mode_permission] {chatbot_id} → {mode} 권한: {has_permission}")
     return has_permission
 
 
