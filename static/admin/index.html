@@ -256,9 +256,22 @@
 
             <!-- 챗봇 권한 컨테이너 -->
             <div id="chatbotPermissionsContainer" class="user-tab-content hidden">
-                <div class="bg-white rounded-2xl p-8 shadow-sm border border-outline-variant" id="permissionsContainer">
-                    <div class="flex justify-center py-20">
-                        <div class="animate-spin w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full"></div>
+                <!-- 챗봇 선택 + 사용자 관리 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-outline-variant mb-6">
+                    <div class="flex gap-3 mb-4">
+                        <select id="permChatbotSelect" 
+                            class="flex-1 px-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-white"
+                            onchange="loadChatbotPermissions()">
+                            <option value="">챗봇 선택...</option>
+                        </select>
+                        <button onclick="openAddChatbotUserModal()" 
+                            class="px-6 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-container hover:opacity-90 transition-opacity flex items-center gap-2">
+                            <span class="material-symbols-outlined text-base">add</span> 사용자 추가
+                        </button>
+                    </div>
+                    
+                    <div id="chatbotUsersList" class="space-y-2">
+                        <p class="text-on-surface-variant text-center py-8">챗봇을 선택하여 접근 권한을 관리하세요.</p>
                     </div>
                 </div>
             </div>

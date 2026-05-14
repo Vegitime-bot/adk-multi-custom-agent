@@ -553,8 +553,8 @@ function renderHierarchyTree(node, allBots, depth = 0) {
     
     return `
         <div class="hierarchy-branch" data-level="${node.level || 0}" data-id="${node.id}">
-            <div class="flex items-center gap-3 px-4 py-3 rounded-xl ${bgClass} cursor-pointer hover:shadow-sm transition-shadow" onclick="toggleNode('${node.id}')">
-                ${hasChildren ? `<span class="material-symbols-outlined text-on-surface-variant transform transition-transform" id="expand-${node.id}">expand_more</span>` : '<span class="w-6"></span>'}
+            <div class="flex items-center gap-3 px-4 py-3 rounded-xl ${bgClass} cursor-pointer hover:shadow-sm transition-shadow" onclick="openDetailModal('${node.id}')">
+                ${hasChildren ? `<span class="material-symbols-outlined text-on-surface-variant transform transition-transform hover:bg-slate-100 rounded p-0.5" id="expand-${node.id}" onclick="event.stopPropagation(); toggleNode('${node.id}')">expand_more</span>` : '<span class="w-6"></span>'}
                 <span class="material-symbols-outlined ${node.level === 0 ? 'text-amber-600' : node.level === 1 ? 'text-tertiary-container' : 'text-green-600'}">${icon}</span>
                 <span class="flex-1 font-semibold text-sm text-on-surface">${node.name}</span>
                 <span class="text-xs text-on-surface-variant font-mono">${node.id}</span>
@@ -642,9 +642,9 @@ function switchUserTab(tab) {
         if (addBtnText) addBtnText.textContent = '';
     } else if (tab === 'chatbot') {
         document.getElementById('chatbotPermissionsContainer').classList.remove('hidden');
-        loadUsers();
-        if (addBtn) addBtn.onclick = openAddPermissionModal;
-        if (addBtnText) addBtnText.textContent = '권한 추가';
+        loadChatbotPermissionOptions(); // 챗봇 목록 로드
+        if (addBtn) addBtn.style.display = 'none'; // 버튼 숨김 (UI 내부에 있음)
+        if (addBtnText) addBtnText.textContent = '';
     } else {
         document.getElementById('dbPermissionsContainer').classList.remove('hidden');
         loadDBPermissions();
@@ -680,25 +680,112 @@ async function loadRestrictedChatbots() {
             return;
         }
         
-        container.innerHTML = `
-            <div class="space-y-2">
-                ${chatbots.map(id => `
-                    <div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl border border-outline-variant">
-                        <div class="flex items-center gap-3">
-                            <span class="material-symbols-outlined text-error">lock</span>
-                            <span class="font-medium text-on-surface">${id}</span>
-                        </div>
-                        <button onclick="removeRestrictedChatbot('${id}')" 
-                            class="px-4 py-2 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors">
-                            제거
-                        </button>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        // 각 챗봇의 사용자 목록도 함께 로드
+        const chatbotHtml = await Promise.all(chatbots.map(async (id) => {
+            try {
+                const permResp = await fetch(`/api/permissions/chatbots/${id}/users`);
+                const users = permResp.ok ? await permResp.json() : [];
+                const userList = Array.isArray(users) ? users : [];
+                return renderRestrictedChatbotCard(id, userList);
+            } catch (e) {
+                return renderRestrictedChatbotCard(id, []);
+            }
+        }));
+        
+        container.innerHTML = `<div class="space-y-3">${chatbotHtml.join('')}</div>`;
     } catch (error) {
         console.error('Restricted chatbots 로드 실패:', error);
         container.innerHTML = `<div class="text-error py-10 text-center">로드 실패: ${error.message}</div>`;
+    }
+}
+
+function renderRestrictedChatbotCard(chatbotId, users) {
+    const usersHtml = users.length > 0
+        ? users.map(u => {
+            const knoxId = typeof u === 'string' ? u : (u.knox_id || u.user_id || String(u));
+            return `
+                <div class="flex items-center justify-between p-3 rounded-lg bg-white border border-outline-variant">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm text-primary">person</span>
+                        <span class="text-sm font-medium text-on-surface">${knoxId}</span>
+                    </div>
+                    <button onclick="removeRestrictedUser('${chatbotId}', '${knoxId}')" 
+                        class="w-6 h-6 flex items-center justify-center rounded bg-red-100 text-error hover:bg-error hover:text-white transition-colors">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                    </button>
+                </div>
+            `;
+        }).join('')
+        : `<p class="text-sm text-on-surface-variant py-2">등록된 사용자가 없습니다. 누구나 접근할 수 있습니다.</p>`;
+
+    return `
+        <div class="bg-surface-container-low rounded-xl border border-outline-variant overflow-hidden" data-restricted-id="${chatbotId}">
+            <div class="flex items-center justify-between p-4">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-error">lock</span>
+                    <span class="font-medium text-on-surface">${chatbotId}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleRestrictedUsers('${chatbotId}')" 
+                        class="px-3 py-1.5 rounded-lg text-sm font-medium bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">people</span>
+                        사용자 ${users.length}명
+                    </button>
+                    <button onclick="removeRestrictedChatbot('${chatbotId}')" 
+                        class="px-3 py-1.5 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-colors">
+                        제거
+                    </button>
+                </div>
+            </div>
+            <div id="restricted-users-${chatbotId}" class="hidden border-t border-outline-variant p-4 space-y-2 bg-surface/50">
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="new-user-${chatbotId}" placeholder="Knox ID 입력" 
+                        class="flex-1 px-3 py-2 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none text-sm">
+                    <button onclick="addRestrictedUser('${chatbotId}')" 
+                        class="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:opacity-90 transition-opacity flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">add</span> 추가
+                    </button>
+                </div>
+                <div class="space-y-2">${usersHtml}</div>
+            </div>
+        </div>
+    `;
+}
+
+function toggleRestrictedUsers(chatbotId) {
+    const el = document.getElementById(`restricted-users-${chatbotId}`);
+    if (el) el.classList.toggle('hidden');
+}
+
+async function addRestrictedUser(chatbotId) {
+    const input = document.getElementById(`new-user-${chatbotId}`);
+    const knoxId = input?.value.trim();
+    if (!knoxId) return showToast('사용자 ID를 입력하세요', 'error');
+
+    try {
+        const response = await fetch('/api/permissions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ knox_id: knoxId, chatbot_id: chatbotId, can_access: true })
+        });
+        if (!response.ok) throw new Error('추가 실패');
+        showToast(`${knoxId} 추가 완료`, 'success');
+        input.value = '';
+        loadRestrictedChatbots(); // 전체 새로고침
+    } catch (error) {
+        showToast('추가 실패: ' + error.message, 'error');
+    }
+}
+
+async function removeRestrictedUser(chatbotId, knoxId) {
+    if (!confirm(`${knoxId}의 접근 권한을 제거하시겠습니까?`)) return;
+    try {
+        const response = await fetch(`/api/permissions/${knoxId}/${chatbotId}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('삭제 실패');
+        showToast('권한 제거 완료', 'success');
+        loadRestrictedChatbots();
+    } catch (error) {
+        showToast('삭제 실패: ' + error.message, 'error');
     }
 }
 
@@ -782,6 +869,9 @@ async function addRestrictedChatbotFromSelect() {
 
 // 전역으로 노출 (HTML onclick에서 접근 가능하도록)
 window.addRestrictedChatbotFromSelect = addRestrictedChatbotFromSelect;
+window.toggleRestrictedUsers = toggleRestrictedUsers;
+window.addRestrictedUser = addRestrictedUser;
+window.removeRestrictedUser = removeRestrictedUser;
 
 // Restricted Chatbot 추가 모달 열기 (deprecated, but kept for compatibility)
 function openAddRestrictedModal() {
@@ -1670,4 +1760,159 @@ function showToast(message, type = 'info') {
         toast.style.transform = 'translateY(20px)';
         toast.style.opacity = '0';
     }, 3000);
+}
+
+// ===== 챗봇별 권한 관리 (Chatbot-Centric) =====
+async function loadChatbotPermissionOptions() {
+    const select = document.getElementById('permChatbotSelect');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">챗봇 선택...</option>';
+
+    try {
+        const response = await fetch('/api/chatbots');
+        if (!response.ok) throw new Error('챗봇 목록 로드 실패');
+
+        const data = await response.json();
+        const chatbots = data.chatbots || [];
+
+        chatbots.forEach(bot => {
+            const option = document.createElement('option');
+            option.value = bot.id;
+            option.textContent = `${bot.name} (${bot.id})`;
+            select.appendChild(option);
+        });
+
+        if (window._selectedChatbotId) {
+            select.value = window._selectedChatbotId;
+            loadChatbotPermissions();
+        }
+    } catch (error) {
+        console.error('챗봇 목록 로드 실패:', error);
+    }
+}
+
+async function loadChatbotPermissions() {
+    const select = document.getElementById('permChatbotSelect');
+    const container = document.getElementById('chatbotUsersList');
+    const chatbotId = select.value;
+
+    if (!chatbotId) {
+        container.innerHTML = '<p class="text-on-surface-variant text-center py-8">챗봇을 선택하여 접근 권한을 관리하세요.</p>';
+        return;
+    }
+
+    window._selectedChatbotId = chatbotId;
+
+    container.innerHTML = `
+        <div class="flex justify-center py-8">
+            <div class="animate-spin w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full"></div>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`/api/permissions/chatbots/${chatbotId}/users`);
+        if (!response.ok) throw new Error('권한 조회 실패');
+
+        const data = await response.json();
+        renderChatbotUsers(chatbotId, data);
+    } catch (error) {
+        container.innerHTML = `
+            <div class="text-error py-8 text-center border-2 border-dashed border-error/20 rounded-2xl">
+                <span class="material-symbols-outlined text-3xl mb-2">error</span>
+                <p>조회 실패: ${error.message}</p>
+                <button onclick="loadChatbotPermissions()" class="mt-3 px-4 py-2 rounded-xl bg-primary text-white text-sm">다시 시도</button>
+            </div>
+        `;
+    }
+}
+
+function renderChatbotUsers(chatbotId, users) {
+    const container = document.getElementById('chatbotUsersList');
+
+    if (!users || users.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-10 border-2 border-dashed border-outline-variant rounded-2xl">
+                <span class="material-symbols-outlined text-4xl text-slate-300 mb-3">group_off</span>
+                <p class="text-on-surface-variant">등록된 사용자가 없습니다.</p>
+                <p class="text-xs text-slate-400 mt-1">누구나 이 챗봇에 접근할 수 있습니다.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const html = users.map(u => {
+        const knoxId = typeof u === 'string' ? u : (u.knox_id || u.user_id || String(u));
+        return `
+            <div class="flex items-center justify-between p-4 rounded-xl bg-white border border-outline-variant hover:shadow-sm transition-shadow">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-primary-container/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary">person</span>
+                    </div>
+                    <p class="font-medium text-sm text-on-surface">${knoxId}</p>
+                </div>
+                <button onclick="removeChatbotUser('${chatbotId}', '${knoxId}')" 
+                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-100 text-error hover:bg-error hover:text-white transition-colors">
+                    <span class="material-symbols-outlined text-base">delete</span>
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+            <p class="text-sm text-on-surface-variant">${users.length}명의 사용자가 접근 가능</p>
+        </div>
+        <div class="space-y-2">${html}</div>
+    `;
+}
+
+function openAddChatbotUserModal() {
+    const chatbotId = document.getElementById('permChatbotSelect').value;
+    if (!chatbotId) {
+        showToast('챗봇을 먼저 선택하세요', 'error');
+        return;
+    }
+
+    const knoxId = prompt('추가할 사용자 Knox ID를 입력하세요:');
+    if (!knoxId || !knoxId.trim()) return;
+
+    const trimmedKnoxId = knoxId.trim();
+
+    fetch('/api/permissions', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            knox_id: trimmedKnoxId,
+            chatbot_id: chatbotId,
+            can_access: true
+        })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('추가 실패');
+        return res.json();
+    })
+    .then(() => {
+        showToast(`${trimmedKnoxId} 사용자 추가 완료`, 'success');
+        loadChatbotPermissions();
+    })
+    .catch(err => {
+        showToast('추가 실패: ' + err.message, 'error');
+    });
+}
+
+async function removeChatbotUser(chatbotId, knoxId) {
+    if (!confirm(`${knoxId} 사용자의 접근 권한을 제거하시겠습니까?`)) return;
+
+    try {
+        const response = await fetch(`/api/permissions/${knoxId}/${chatbotId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('삭제 실패');
+
+        showToast('권한 제거 완료', 'success');
+        loadChatbotPermissions();
+    } catch (error) {
+        showToast('삭제 실패: ' + error.message, 'error');
+    }
 }
